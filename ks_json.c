@@ -168,14 +168,13 @@ continue_key_string:
 printf("got key: '%s'\n", ks->str);
 
 		// skip whitespaces
+continue_key_separator:
 		buff = skip_whitespace(buff, end);
 		if(buff >= end)
 		{
 			ks->state = KSTATE_KEY_SEPARATOR;
 			return KS_JSON_MORE_DATA;
 		}
-
-continue_key_separator:
 
 		// check for key separator
 		if(*buff != ':')
