@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include "kgstruct.h"
 #include "ks_json.h"
 
 enum
@@ -66,12 +67,41 @@ static uint8_t *get_string(kgstruct_json_t *ks, uint8_t *ptr, uint8_t *end)
 	return ptr;
 }
 
+#ifdef KGSTRUCT_ENABLE_US64
+static uint8_t *get_unsigned(uint8_t *str, uint64_t *dst)
+{
+	uint64_t val = 0;
+#else
+static uint8_t *get_unsigned(uint8_t *str, uint32_t *dst)
+{
+	uint32_t val = 0;
+#endif
+	while(1)
+	{
+		register uint8_t tmp = *str;
+		if(!tmp)
+			break;
+		if(tmp == '.')
+			break;
+		if(tmp < '0' || tmp > '9')
+			return NULL;
+		val *= 10;
+		val += tmp - '0';
+		str++;
+	}
+
+	*dst = val;
+
+	return str;
+}
+
 //
 // API
 
 int ks_json_parse(kgstruct_json_t *ks, uint8_t *buff, uint32_t length)
 {
 	uint8_t *end = buff + length;
+	const kgstruct_template_t *elm;
 
 	switch(ks->state)
 	{
@@ -166,6 +196,20 @@ continue_key_string:
 		buff++; // skip string terminator
 
 printf("got key: '%s'\n", ks->str);
+
+		// find this key in the template
+		ks->element = NULL;
+		elm = ks->template;
+		while(elm->key)
+		{
+			if(!strcmp(elm->key, ks->str))
+			{
+printf("** found match for key at %u **\n", (uint32_t)(elm - ks->template));
+				ks->element = elm;
+				break;
+			}
+			elm++;
+		}
 
 		// skip whitespaces
 continue_key_separator:
@@ -267,7 +311,7 @@ continue_val_other:
 				ks->state = KSTATE_VAL_OTHER;
 				return KS_JSON_MORE_DATA;
 			}
-			// TODO: determine type
+			// type
 			ks->val_type = JTYPE_OTHER;
 		}
 		*ks->ptr = 0; // string terminator
@@ -282,6 +326,298 @@ continue_val_end:
 		}
 
 printf("got val: '%s'\n\n", ks->str);
+
+		// process this value
+		if(ks->element)
+		{
+			uint32_t type = ks->element->info->base.type;
+			if((type & KS_TYPEMASK) == KS_TYPEDEF_STRING)
+			{
+				// TODO: check type?
+				// check string length
+				type = ks->ptr - ks->str;
+				if(type > ks->element->info->string.extra[0])
+					 ks->str[ks->element->info->string.extra[0]] = 0;
+				// copy the string
+				strcpy(ks->data + ks->element->offset, ks->str);
+			} else
+			if(ks->val_type == JTYPE_OTHER)
+			{
+				int neg_bad; // -1 = bad; 0 = positive; 1 = negative
+				kgstruct_number_t val;
+				kgstruct_number_t *dst = ks->data + ks->element->offset;
+				// boolean check
+				if(!strcmp(ks->str, "true"))
+				{
+					val.uread = 1;
+					neg_bad = 0;
+				} else
+				if(!strcmp(ks->str, "false"))
+				{
+					val.uread = 0;
+					neg_bad = 0;
+				} else
+				{
+					// normal number
+					uint8_t *ptr = ks->str;
+
+					if(*ptr == '-')
+					{
+						neg_bad = 1;
+						ptr++;
+					} else
+						neg_bad = 0;
+
+					ptr = get_unsigned(ptr, &val.uread);
+					if(!ptr)
+						neg_bad = -1;
+				}
+				// assign
+				if(neg_bad >= 0)
+				{
+#ifdef KGSTRUCT_ENABLE_MINAX
+					int idx = 0;
+#endif
+					switch(type & KS_TYPEMASK)
+					{
+						// 8 bits
+						case KS_TYPEDEF_U8:
+							if(neg_bad)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.uread < ks->element->info->u8.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.uread > ks->element->info->u8.extra[idx])
+									break;
+							} else
+#endif
+							if(val.uread > 0xFF)
+								break;
+							dst->u8 = val.u8;
+						break;
+						case KS_TYPEDEF_S8:
+							if(neg_bad)
+							{
+								if(val.uread > KGSTRUCT_NUMBER_SMAX)
+									break;
+								val.sread = -val.sread;
+							}
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.sread < ks->element->info->s8.extra[0])
+									break;
+								idx++;
+							} else
+#endif
+							if(val.sread < -0x80)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.sread > ks->element->info->s8.extra[idx])
+									break;
+							} else
+#endif
+							if(val.sread > 0x7F)
+								break;
+							dst->s8 = val.s8;
+						break;
+						// 16 bits
+						case KS_TYPEDEF_U16:
+							if(neg_bad)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.uread < ks->element->info->u16.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.uread > ks->element->info->u16.extra[idx])
+									break;
+							} else
+#endif
+							if(val.uread > 0xFFFF)
+								break;
+							dst->u16 = val.u16;
+						break;
+						case KS_TYPEDEF_S16:
+							if(neg_bad)
+							{
+								if(val.uread > KGSTRUCT_NUMBER_SMAX)
+									break;
+								val.sread = -val.sread;
+							}
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.sread < ks->element->info->s16.extra[0])
+									break;
+								idx++;
+							} else
+#endif
+							if(val.sread < -0x8000)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.sread > ks->element->info->s16.extra[idx])
+									break;
+							} else
+#endif
+							if(val.sread > 0x7FFF)
+								break;
+							dst->s16 = val.s16;
+						break;
+						// 32 bits
+						case KS_TYPEDEF_U32:
+							if(neg_bad)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.uread < ks->element->info->u32.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.uread > ks->element->info->u32.extra[idx])
+									break;
+							} else
+#endif
+							if(val.uread > 0xFFFFFFFF)
+								break;
+							dst->u32 = val.u32;
+						break;
+						case KS_TYPEDEF_S32:
+							if(neg_bad)
+							{
+								if(val.uread > KGSTRUCT_NUMBER_SMAX)
+									break;
+								val.sread = -val.sread;
+							}
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.sread < ks->element->info->s32.extra[0])
+									break;
+								idx++;
+							} else
+#endif
+							if(val.sread < -0x80000000L)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.sread > ks->element->info->s32.extra[idx])
+									break;
+							} else
+#endif
+							if(val.sread > 0x7FFFFFFF)
+								break;
+							dst->s32 = val.s32;
+						break;
+						// 64 bits
+#ifdef KGSTRUCT_ENABLE_US64
+						case KS_TYPEDEF_U64:
+							if(neg_bad)
+								break;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.uread < ks->element->info->u64.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.uread > ks->element->info->u64.extra[idx])
+									break;
+							}
+#endif
+							dst->u64 = val.u64;
+						break;
+						case KS_TYPEDEF_S64:
+							if(neg_bad)
+							{
+								if(val.uread > KGSTRUCT_NUMBER_SMAX)
+									break;
+								val.sread = -val.sread;
+							}
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.sread < ks->element->info->s64.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.sread > ks->element->info->s64.extra[idx])
+									break;
+							}
+#endif
+							dst->s64 = val.s64;
+						break;
+#endif
+						// float
+#ifdef KGSTRUCT_ENABLE_FLOAT
+						case KS_TYPEDEF_FLOAT:
+							if(neg_bad)
+								val.sread = -val.sread;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.sread < ks->element->info->f32.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.sread > ks->element->info->f32.extra[idx])
+									break;
+							}
+#endif
+							// TODO: decimal part
+							dst->f32 = val.sread;
+						break;
+#endif
+						// double
+#ifdef KGSTRUCT_ENABLE_DOUBLE
+						case KS_TYPEDEF_DOUBLE:
+							if(neg_bad)
+								val.sread = -val.sread;
+#ifdef KGSTRUCT_ENABLE_MINAX
+							if(type & KS_TYPEFLAG_HAS_MIN)
+							{
+								if(val.sread < ks->element->info->f64.extra[0])
+									break;
+								idx++;
+							}
+							if(type & KS_TYPEFLAG_HAS_MAX)
+							{
+								if(val.sread > ks->element->info->f64.extra[idx])
+									break;
+							}
+#endif
+							// TODO: decimal part
+							dst->f64 = val.sread;
+						break;
+#endif
+					}
+				}
+			}
+		}
 
 skip_empty_object:
 		while(*buff == ks->array)
@@ -323,8 +659,10 @@ finished:
 	return ks->error;
 }
 
-void ks_json_reset(kgstruct_json_t *ks)
+void ks_json_init(kgstruct_json_t *ks, void *ptr, const kgstruct_template_t *template)
 {
+	ks->data = ptr;
+	ks->template = template;
 	ks->state = KSTATE_START_OBJECT;
 	ks->depth = 0;
 	ks->array = '}';

@@ -1,16 +1,19 @@
 program = test
-CFGOBJ =
-OBJ = ${CFGOBJ} main.o ks_json.o
+KSOBJ = structs.o
+OBJ = main.o ks_json.o
 LIBS = 
 OPT= -O2 -g
 CC = gcc
 CFLAGS = ${OPT}
 
-build: ${program}
+build: ${KSOBJ} ${program}
+
+structs.c: structs.json
+	./ks_generator.py structs.json structs
 
 clean:
-	rm -f *.o ${program} $(CFGOBJ:.o=.c) $(CFGOBJ:.o=.h)
+	rm -f *.o ${program} $(KSOBJ:.o=.c) $(KSOBJ:.o=.h)
 
 ${program}: ${OBJ}
-	${CC} ${OBJ} ${LIBS} -o ${program} ${OPT}
+	${CC} ${OBJ} ${KSOBJ} ${LIBS} -o ${program} ${OPT}
 

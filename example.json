@@ -1,6 +1,6 @@
 {
 	"pokus": "test",
-	"testU8": 192,
+	"testU8": 111,
 	"test_s16": -24894,
 	"test_s32": -64891323,
 	"test_bool": true,
@@ -11,6 +11,13 @@
 	"test_text": "The Sting",
 	"test_u32": 2281710098,
 	"test_s8": -123,
+	"test_s64": -123456789123456789,
+	"test_u64": 123456789123456789,
+	"test_limit0": 24,
+	"test_limit1": 3210,
+	"test_limit2": 678,
+	"test_limit3": 765,
+	"custom name": 2991,
 	"ignored":
 	{
 		"test": [5, false, 77.7, true, {"a": "b"}, "xyz"],

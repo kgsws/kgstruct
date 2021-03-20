@@ -1,2 +1,4 @@
 *.o
 test
+structs.c
+structs.h

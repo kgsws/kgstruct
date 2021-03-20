@@ -1,6 +1,6 @@
 
 // configuration
-#define KS_JSON_MAX_STRING_LENGTH	32
+#define KS_JSON_MAX_STRING_LENGTH	64
 #define KS_JSON_MAX_DEPTH	8
 
 //
@@ -28,11 +28,14 @@ typedef struct
 	uint8_t array;
 	uint8_t val_type;
 	uint8_t depth;
+	void *data;
+	const kgstruct_template_t *template;
+	const kgstruct_template_t *element;
 	uint8_t str[KS_JSON_MAX_STRING_LENGTH];
 	uint8_t *ptr;
 	uint32_t dbit[(KS_JSON_MAX_DEPTH+31) >> 5];
 } kgstruct_json_t;
 
 int ks_json_parse(kgstruct_json_t *ks, uint8_t *buff, uint32_t length);
-void ks_json_reset(kgstruct_json_t *ks);
+void ks_json_init(kgstruct_json_t *ks, void *ptr, const kgstruct_template_t *template);
 
