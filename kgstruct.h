@@ -17,6 +17,7 @@
 
 enum
 {
+	KS_TYPEDEF_STRUCT,
 	KS_TYPEDEF_STRING,
 	KS_TYPEDEF_U8,
 	KS_TYPEDEF_U16,
@@ -83,6 +84,16 @@ typedef struct
 {
 	kgstruct_base_t base;
 } kgstruct_base_base_t;
+
+typedef struct
+{
+	kgstruct_base_t base;
+#ifdef KGSTRUCT_MAX_64K
+	uint32_t extra[1];
+#else
+	uint16_t extra[1];
+#endif
+} kgstruct_object_t;
 
 typedef struct
 {
@@ -160,6 +171,7 @@ typedef union
 {
 	kgstruct_base_t base;
 	kgstruct_string_t string;
+	kgstruct_object_t object;
 	kgstruct_s8_t s8;
 	kgstruct_u8_t u8;
 	kgstruct_s16_t s16;
@@ -190,6 +202,6 @@ typedef struct
 #else
 	uint32_t offset;
 #endif
-	uint16_t skip;
+	uint16_t magic;
 } kgstruct_template_t;
 

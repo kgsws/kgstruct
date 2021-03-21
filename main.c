@@ -39,6 +39,9 @@ static void dump_struct(test_struct_t *in)
 	printf("test_limit1: %u\n", in->test_limit1);
 	printf("test_limit2: %u\n", in->test_limit2);
 	printf("test_limit3: %u\n", in->test_limit3);
+
+	printf("inside.value_u8: %u\n", in->inside.value_u8);
+	printf("inside.value_u16: %u\n", in->inside.value_u16);
 }
 
 int main(int argc, char **argv)

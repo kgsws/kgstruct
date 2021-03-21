@@ -1,7 +1,7 @@
 
 // configuration
 #define KS_JSON_MAX_STRING_LENGTH	64
-#define KS_JSON_MAX_DEPTH	8
+#define KS_JSON_MAX_DEPTH	32
 
 //
 //
@@ -28,6 +28,8 @@ typedef struct
 	uint8_t array;
 	uint8_t val_type;
 	uint8_t depth;
+	uint8_t depth_ignored;
+	uint16_t magic;
 	void *data;
 	const kgstruct_template_t *template;
 	const kgstruct_template_t *element;

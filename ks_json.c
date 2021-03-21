@@ -101,7 +101,6 @@ static uint8_t *get_unsigned(uint8_t *str, uint32_t *dst)
 int ks_json_parse(kgstruct_json_t *ks, uint8_t *buff, uint32_t length)
 {
 	uint8_t *end = buff + length;
-	const kgstruct_template_t *elm;
 
 	switch(ks->state)
 	{
@@ -199,16 +198,19 @@ printf("got key: '%s'\n", ks->str);
 
 		// find this key in the template
 		ks->element = NULL;
-		elm = ks->template;
-		while(elm->key)
+		if(!ks->depth_ignored)
 		{
-			if(!strcmp(elm->key, ks->str))
+			const kgstruct_template_t *elm = ks->template;
+			while(elm->info)
 			{
+				if(elm->magic == ks->magic && elm->key && !strcmp(elm->key, ks->str))
+				{
 printf("** found match for key at %u **\n", (uint32_t)(elm - ks->template));
-				ks->element = elm;
-				break;
+					ks->element = elm;
+					break;
+				}
+				elm++;
 			}
-			elm++;
 		}
 
 		// skip whitespaces
@@ -272,7 +274,13 @@ continue_val_string:
 				goto finished;
 			}
 			ks->dbit[ks->depth >> 5] &= ~(1 << (ks->depth & 31));
-printf("object; depth %u; bits 0x%08X\n\n", ks->depth, ks->dbit[ks->depth >> 5]);
+			if(ks->element)
+				// change magic and continue
+				ks->magic = ks->element->offset;
+			else
+				// ignore this branch
+				ks->depth_ignored++;
+printf("object; depth %u; bits 0x%08X; ignored %u; magic %u\n\n", ks->depth, ks->dbit[ks->depth >> 5], ks->depth_ignored, ks->magic);
 			goto continue_key_in_object;
 		} else
 		if(*buff == '[')
@@ -287,6 +295,7 @@ printf("object; depth %u; bits 0x%08X\n\n", ks->depth, ks->dbit[ks->depth >> 5])
 				goto finished;
 			}
 			ks->dbit[ks->depth >> 5] |= (1 << (ks->depth & 31));
+			ks->depth_ignored++; // TODO
 printf("array; depth %u; bits 0x%08X\n\n", ks->depth, ks->dbit[ks->depth >> 5]);
 			goto continue_key_in_object;
 		} else
@@ -344,6 +353,7 @@ printf("got val: '%s'\n\n", ks->str);
 			if(ks->val_type == JTYPE_OTHER)
 			{
 				int neg_bad; // -1 = bad; 0 = positive; 1 = negative
+				uint8_t *ptr;
 				kgstruct_number_t val;
 				kgstruct_number_t *dst = ks->data + ks->element->offset;
 				// boolean check
@@ -359,7 +369,7 @@ printf("got val: '%s'\n\n", ks->str);
 				} else
 				{
 					// normal number
-					uint8_t *ptr = ks->str;
+					ptr = ks->str;
 
 					if(*ptr == '-')
 					{
@@ -588,8 +598,35 @@ printf("got val: '%s'\n\n", ks->str);
 									break;
 							}
 #endif
-							// TODO: decimal part
 							dst->f32 = val.sread;
+							// decimal part
+							if(*ptr == '.')
+							{
+								float dec = 0;
+								while(1)
+								{
+									register uint8_t tmp;
+									ptr++;
+									tmp = *ptr;
+									if(tmp < '0' || tmp > '9')
+										break;
+								}
+								while(1)
+								{
+									register uint8_t tmp;
+									ptr--;
+									tmp = *ptr;
+									if(!tmp)
+										break;
+									if(tmp < '0' || tmp > '9')
+										break;
+									dec += tmp - '0';
+									dec /= 10;
+								}
+								if(neg_bad)
+									dec = -dec;
+								dst->f32 += dec;
+							}
 						break;
 #endif
 						// double
@@ -610,8 +647,35 @@ printf("got val: '%s'\n\n", ks->str);
 									break;
 							}
 #endif
-							// TODO: decimal part
 							dst->f64 = val.sread;
+							// decimal part
+							if(*ptr == '.')
+							{
+								double dec = 0;
+								while(1)
+								{
+									register uint8_t tmp;
+									ptr++;
+									tmp = *ptr;
+									if(tmp < '0' || tmp > '9')
+										break;
+								}
+								while(1)
+								{
+									register uint8_t tmp;
+									ptr--;
+									tmp = *ptr;
+									if(!tmp)
+										break;
+									if(tmp < '0' || tmp > '9')
+										break;
+									dec += tmp - '0';
+									dec /= 10;
+								}
+								if(neg_bad)
+									dec = -dec;
+								dst->f32 += dec;
+							}
 						break;
 #endif
 					}
@@ -630,6 +694,23 @@ printf("FINISHED\n");
 				goto finished;
 			}
 printf("drop depth %d\n\n", ks->depth);
+			if(!ks->depth_ignored)
+			{
+				// find old magic
+				const kgstruct_template_t *elm = ks->template;
+				while(elm->info)
+				{
+					if(!elm->key && elm->magic == ks->magic)
+					{
+						ks->magic = elm->offset;
+printf("** found old magic %u **\n", ks->magic);
+						break;
+					}
+					elm++;
+				}
+			} else
+				// drop ignored depth
+				ks->depth_ignored--;
 			ks->depth--;
 			ks->array = ks->dbit[ks->depth >> 5] & (1 << (ks->depth & 31)) ? ']' : '}';
 			buff++;
@@ -665,6 +746,8 @@ void ks_json_init(kgstruct_json_t *ks, void *ptr, const kgstruct_template_t *tem
 	ks->template = template;
 	ks->state = KSTATE_START_OBJECT;
 	ks->depth = 0;
+	ks->depth_ignored = 0;
+	ks->magic = template->magic; // magic of first element is always correct
 	ks->array = '}';
 }
 
