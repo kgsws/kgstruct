@@ -30,6 +30,13 @@ typedef struct
 	uint8_t depth;
 	uint8_t depth_ignored;
 	uint16_t magic;
+	uint16_t array_idx;
+	uint16_t array_max;
+#ifdef KGSTRUCT_MAX_64K
+	uint16_t array_es;
+#else
+	uint32_t array_es;
+#endif
 	void *data;
 	const kgstruct_template_t *template;
 	const kgstruct_template_t *element;

@@ -21,6 +21,7 @@ type_c_string = ["uint8_t", 0, "KS_TYPEDEF_STRING", "kgstruct_string_t"]
 type_c_struct = [False, 0, "KS_TYPEDEF_STRUCT", "kgstruct_object_t"]
 type_has_min = "KS_TYPEFLAG_HAS_MIN"
 type_has_max = "KS_TYPEFLAG_HAS_MAX"
+type_is_array = "KS_TYPE_ARRAY_DEF(%u)"
 template_base = "kgstruct_base_base_t"
 export_types = []
 
@@ -37,8 +38,10 @@ def add_type(tdef):
 	return i
 
 def recursive_struct_dump(output, struct_name, base_offs_str):
+	global idx_global
+	idx_global += 1
+	struct_idx = idx_global
 	struct = struct_list[struct_name]["template"]
-	struct_idx = struct_list[struct_name]["idx"]
 	for var_name in struct:
 		var_info = struct[var_name]
 		type_def = var_info["type_def"]
@@ -47,11 +50,11 @@ def recursive_struct_dump(output, struct_name, base_offs_str):
 			var_name = var_info["key"]
 		if "struct" in type_def:
 			# structure magic
-			output.write("\t{\"%s\", (const kgstruct_type_t*)&__kst_%d, %d, %d},\n" % (var_name, var_info["type_gen"], type_def["struct"][0], struct_idx))
+			output.write("\t{\"%s\", (const kgstruct_type_t*)&__kst_%d, %d, %d},\n" % (var_name, var_info["type_gen"], idx_global + 1, struct_idx))
 			# return magic
-			output.write("\t{NULL, (const kgstruct_type_t*)&__kst_%d, %s, %s},\n" % (var_info["type_gen"], struct_idx, type_def["struct"][0]))
+			output.write("\t{NULL, (const kgstruct_type_t*)&__kst_%d, %s, %s},\n" % (var_info["type_gen"], struct_idx, idx_global + 1))
 			# recursive dump
-			recursive_struct_dump(output, type_def["struct"][1], offs_str + " + ")
+			recursive_struct_dump(output, type_def["struct"], offs_str + " + ")
 		else:
 			# normal variable
 			output.write("\t{\"%s\", (const kgstruct_type_t*)&__kst_%d, %s, %d},\n" % (var_name, var_info["type_gen"], offs_str, struct_idx))
@@ -69,6 +72,9 @@ with open(sys.argv[1], "rb") as f:
 	data = json.loads(f.read().decode('utf8'), object_pairs_hook=OrderedDict)
 	if "options" in data:
 		config = data["options"]
+		# string type
+		if "string" in config:
+			type_c_string[0] = config["string"]
 	else:
 		config = {}
 	structures = data["structures"]
@@ -95,9 +101,13 @@ for struct_name in structures:
 				# extra check
 				if type_info in struct_list:
 					# struct-in-struct
-					dest = [struct_list[type_info]["idx"], type_info]
-					type_def = {"type": type_info + "_t", "size": struct_list[type_info]["size"], "struct": dest}
+					type_def = {"type": type_info + "_t", "size": struct_list[type_info]["size"], "struct": type_info}
 					type_gen = {"kstype": type_c_struct[2], "extra": [struct_list[type_info]["size"]], "template": type_c_struct[3]}
+					# check for array
+					if "array" in var_info:
+						type_gen["kstype"] += " | " + type_is_array % var_info["array"]
+						type_def["array"] = var_info["array"]
+						type_def["size"] *= var_info["array"]
 					type_gen_idx = add_type(type_gen)
 				else:
 					# invalid type
@@ -107,6 +117,11 @@ for struct_name in structures:
 				type_info = type_info_list[type_info]
 				type_def = {"type": type_info[0], "size": type_info[1]}
 				type_gen = {"kstype": type_info[2], "extra": [], "template": template_base}
+				# check for array
+				if "array" in var_info:
+					type_gen["kstype"] += " | " + type_is_array % var_info["array"]
+					type_def["array"] = var_info["array"]
+					type_def["size"] *= var_info["array"]
 				# check for limits
 				if "min" in var_info:
 					type_gen["kstype"] += " | " + type_has_min
@@ -211,6 +226,7 @@ for struct_name in struct_list:
 	# template def
 	output.write("const kgstruct_template_t ks_template__%s[] =\n{\n" % struct_name)
 	# export all variables
+	idx_global = -1
 	recursive_struct_dump(output, struct_name, "")
 	output.write("\t{NULL, NULL}\n};\n")
 # done

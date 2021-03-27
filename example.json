@@ -10,13 +10,25 @@
 	"test_float": -768.321,
 	"test_text": "The Sting",
 	"test_u32": 2281710098,
-	"test_s8": -123,
+	"-test_s8": -123,
+	"test_s8": {"hax": "xah"},
 	"test_s64": -123456789123456789,
 	"inside": {
 		"value_u16": 44332,
 		"value_u8": 91,
-		"inside": {
-			"value_u16": 65535
+		"value_u32": 91919191,
+		"meta": {
+			"meta_u32": 12344321,
+			"meta_s32": -43211234
+		}
+	},
+	"insidE": {
+		"value_u16": 54433,
+		"value_u8": 222,
+		"value_u32": 222222222,
+		"meta": {
+			"meta_u32": 5432345,
+			"meta_s32": -456543
 		}
 	},
 	"test_u64": 123456789123456789,
@@ -24,7 +36,6 @@
 	"test_limit1": 3210,
 	"test_limit2": 678,
 	"test_limit3": 765,
-	"custom name": 2991,
 	"ignored":
 	{
 		"custom name": 44444,
@@ -35,5 +46,14 @@
 		},
 		"empty": {},
 		"empty": []
-	}
+	},
+	"test_u32a": [
+		6666,
+		7777,
+		{},
+		8888,
+		9999,
+		10101010,
+	],
+	"custom name": 2991
 }

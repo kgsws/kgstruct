@@ -9,7 +9,7 @@
 #include "structs.h" // generated file
 
 static kgstruct_json_t ks;
-static uint8_t buffer[1024];
+static uint8_t buffer[2048];
 static int size;
 static int fd;
 
@@ -40,8 +40,20 @@ static void dump_struct(test_struct_t *in)
 	printf("test_limit2: %u\n", in->test_limit2);
 	printf("test_limit3: %u\n", in->test_limit3);
 
+	for(uint32_t i = 0; i < 4; i++)
+		printf("test_u32a[%u]: %u\n", i, in->test_u32a[i]);
+
 	printf("inside.value_u8: %u\n", in->inside.value_u8);
 	printf("inside.value_u16: %u\n", in->inside.value_u16);
+	printf("inside.value_u32: %u\n", in->inside.value_u32);
+	printf("inside.meta.meta_u32: %u\n", in->inside.meta.meta_u32);
+	printf("inside.meta.meta_s32: %d\n", in->inside.meta.meta_s32);
+
+	printf("insidE.value_u8: %u\n", in->insidE.value_u8);
+	printf("insidE.value_u16: %u\n", in->insidE.value_u16);
+	printf("insidE.value_u32: %u\n", in->insidE.value_u32);
+	printf("insidE.meta.meta_u32: %u\n", in->insidE.meta.meta_u32);
+	printf("insidE.meta.meta_s32: %d\n", in->insidE.meta.meta_s32);
 }
 
 int main(int argc, char **argv)
@@ -66,7 +78,7 @@ int main(int argc, char **argv)
 	printf("== FULL ==========\n");
 	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
 	ks_json_parse(&ks, buffer, size);
-
+/*
 	// check stepped
 	printf("\n== STEP ==========\n");
 	ks_json_init(&ks, test_struct + 1, ks_template__test_struct);
@@ -83,7 +95,7 @@ int main(int argc, char **argv)
 		printf("*MISMATCH*\n");
 	else
 		printf("*MATCH*\n");
-
+*/
 	return 0;
 }
 

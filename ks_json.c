@@ -27,6 +27,27 @@ enum
 	JTYPE_OTHER // TODO: more types
 };
 
+// TODO: move elsewhere
+static const uint8_t kgstruct_type_size[] =
+{
+	[KS_TYPEDEF_U8] = sizeof(uint8_t),
+	[KS_TYPEDEF_S8] = sizeof(int8_t),
+	[KS_TYPEDEF_U16] = sizeof(uint16_t),
+	[KS_TYPEDEF_S16] = sizeof(int16_t),
+	[KS_TYPEDEF_U32] = sizeof(uint32_t),
+	[KS_TYPEDEF_S32] = sizeof(int32_t),
+#ifdef KGSTRUCT_ENABLE_US64
+	[KS_TYPEDEF_U64] = sizeof(uint64_t),
+	[KS_TYPEDEF_S64] = sizeof(int64_t),
+#endif
+#ifdef KGSTRUCT_ENABLE_FLOAT
+	[KS_TYPEDEF_FLOAT] = sizeof(float),
+#endif
+#ifdef KGSTRUCT_ENABLE_DOUBLE
+	[KS_TYPEDEF_DOUBLE] = sizeof(double),
+#endif
+};
+
 //
 // funcs
 
@@ -274,7 +295,8 @@ continue_val_string:
 				goto finished;
 			}
 			ks->dbit[ks->depth >> 5] &= ~(1 << (ks->depth & 31));
-			if(ks->element)
+			// check for type match
+			if(ks->element && (ks->element->info->base.type & (KS_TYPEMASK_TYPE | KS_TYPEFLAG_IS_ARRAY)) == KS_TYPEDEF_STRUCT)
 				// change magic and continue
 				ks->magic = ks->element->offset;
 			else
@@ -295,7 +317,27 @@ printf("object; depth %u; bits 0x%08X; ignored %u; magic %u\n\n", ks->depth, ks-
 				goto finished;
 			}
 			ks->dbit[ks->depth >> 5] |= (1 << (ks->depth & 31));
-			ks->depth_ignored++; // TODO
+			// check for type match
+			if(ks->element && ks->element->info->base.type & KS_TYPEFLAG_IS_ARRAY)
+			{
+				if(ks->array_max)
+				{
+					// array in array is not supported
+					ks->error = KS_JSON_TOO_DEEP;
+					goto finished;
+				}
+				ks->array_idx = 0;
+				ks->array_max = (ks->element->info->base.type & KS_TYPEMASK_ARRAY) >> KS_TYPESHIFT_ARRAY;
+				if((ks->element->info->base.type & KS_TYPEMASK_TYPE) == KS_TYPEDEF_STRUCT)
+					// get structure size
+					ks->array_es = ks->element->info->object.extra[0];
+				else
+					// get size by type
+					ks->array_es = kgstruct_type_size[ks->element->info->base.type & KS_TYPEMASK_TYPE];
+printf("** array; elm size is %u\n", ks->array_es);
+			} else
+				// ignore this branch
+				ks->depth_ignored++;
 printf("array; depth %u; bits 0x%08X\n\n", ks->depth, ks->dbit[ks->depth >> 5]);
 			goto continue_key_in_object;
 		} else
@@ -340,7 +382,7 @@ printf("got val: '%s'\n\n", ks->str);
 		if(ks->element)
 		{
 			uint32_t type = ks->element->info->base.type;
-			if((type & KS_TYPEMASK) == KS_TYPEDEF_STRING)
+			if((type & KS_TYPEMASK_TYPE) == KS_TYPEDEF_STRING)
 			{
 				// TODO: check type?
 				// check string length
@@ -356,6 +398,9 @@ printf("got val: '%s'\n\n", ks->str);
 				uint8_t *ptr;
 				kgstruct_number_t val;
 				kgstruct_number_t *dst = ks->data + ks->element->offset;
+				// array index check
+				if(ks->array_max)
+					dst = (void*)dst + ks->array_idx * ks->array_es;
 				// boolean check
 				if(!strcmp(ks->str, "true"))
 				{
@@ -388,7 +433,7 @@ printf("got val: '%s'\n\n", ks->str);
 #ifdef KGSTRUCT_ENABLE_MINAX
 					int idx = 0;
 #endif
-					switch(type & KS_TYPEMASK)
+					switch(type & KS_TYPEMASK_TYPE)
 					{
 						// 8 bits
 						case KS_TYPEDEF_U8:
@@ -683,6 +728,14 @@ printf("got val: '%s'\n\n", ks->str);
 			}
 		}
 
+		if(ks->array_max)
+		{
+			ks->array_idx++;
+			if(ks->array_idx == ks->array_max)
+				// array can't be bigger
+				ks->element = NULL;
+		}
+
 skip_empty_object:
 		while(*buff == ks->array)
 		{
@@ -693,20 +746,28 @@ printf("FINISHED\n");
 				ks->error = KS_JSON_OK;
 				goto finished;
 			}
-printf("drop depth %d\n\n", ks->depth);
+printf("drop depth %d ign %d\n\n", ks->depth, ks->depth_ignored);
 			if(!ks->depth_ignored)
 			{
-				// find old magic
-				const kgstruct_template_t *elm = ks->template;
-				while(elm->info)
+				if(!ks->array_max)
 				{
-					if(!elm->key && elm->magic == ks->magic)
+					// find old magic
+					const kgstruct_template_t *elm = ks->template;
+					while(elm->info)
 					{
-						ks->magic = elm->offset;
+						if(!elm->key && elm->magic == ks->magic)
+						{
+							ks->magic = elm->offset;
 printf("** found old magic %u **\n", ks->magic);
-						break;
+							break;
+						}
+						elm++;
 					}
-					elm++;
+				} else
+				{
+					// leave the array
+					ks->array_max = 0;
+printf("** leaving array **\n");
 				}
 			} else
 				// drop ignored depth
@@ -747,7 +808,9 @@ void ks_json_init(kgstruct_json_t *ks, void *ptr, const kgstruct_template_t *tem
 	ks->state = KSTATE_START_OBJECT;
 	ks->depth = 0;
 	ks->depth_ignored = 0;
-	ks->magic = template->magic; // magic of first element is always correct
+	ks->escaped = 0;
 	ks->array = '}';
+	ks->magic = 0;
+	ks->array_max = 0;
 }
 

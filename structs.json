@@ -1,13 +1,20 @@
 {
 	"options":
 	{
-		"autopad": 4
+		"autopad": 4,
+		"string": "uint8_t"
 	},
 	"structures":
 	{
+		"meta_struct": {
+			"meta_u32": {"type": "u32"},
+			"meta_s32": {"type": "s32"}
+		},
 		"inside_struct": {
 			"value_u8": {"type": "u8"},
-			"value_u16": {"type": "u16"}
+			"value_u16": {"type": "u16"},
+			"meta": {"type": "meta_struct"},
+			"value_u32": {"type": "u32"}
 		},
 		"test_struct": {
 			"test_u8": {"type": "u8"},
@@ -22,7 +29,9 @@
 			"test_float": {"type": "f32"},
 			"inside": {"type": "inside_struct"},
 			"test_text": {"type": "string", "size": 32},
+			"insidE": {"type": "inside_struct"},
 			"test_named": {"type": "u32", "key": "custom name"},
+			"test_u32a": {"type": "u32", "array": 4},
 			"test_limit0": {"type": "u32", "min": 42},
 			"test_limit1": {"type": "u32", "max": 2991},
 			"test_limit2": {"type": "u32", "min": 666, "max": 777},
