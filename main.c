@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 	printf("== FULL ==========\n");
 	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
 	ks_json_parse(&ks, buffer, size);
-/*
+
 	// check stepped
 	printf("\n== STEP ==========\n");
 	ks_json_init(&ks, test_struct + 1, ks_template__test_struct);
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 		printf("*MISMATCH*\n");
 	else
 		printf("*MATCH*\n");
-*/
+
 	return 0;
 }
 

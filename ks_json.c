@@ -261,6 +261,10 @@ continue_val_in_object:
 			return KS_JSON_MORE_DATA;
 		}
 
+		// advance array index
+		if(!ks->depth_ignored && ks->array_max)
+			ks->array_idx++;
+
 		// prepare to read
 		ks->ptr = ks->str;
 		// check type
@@ -326,7 +330,7 @@ printf("object; depth %u; bits 0x%08X; ignored %u; magic %u\n\n", ks->depth, ks-
 					ks->error = KS_JSON_TOO_DEEP;
 					goto finished;
 				}
-				ks->array_idx = 0;
+				ks->array_idx = 0xFFFF;
 				ks->array_max = (ks->element->info->base.type & KS_TYPEMASK_ARRAY) >> KS_TYPESHIFT_ARRAY;
 				if((ks->element->info->base.type & KS_TYPEMASK_TYPE) == KS_TYPEDEF_STRUCT)
 					// get structure size
@@ -334,6 +338,8 @@ printf("object; depth %u; bits 0x%08X; ignored %u; magic %u\n\n", ks->depth, ks-
 				else
 					// get size by type
 					ks->array_es = kgstruct_type_size[ks->element->info->base.type & KS_TYPEMASK_TYPE];
+				ks->array_el = ks->element;
+				ks->element = NULL;
 printf("** array; elm size is %u\n", ks->array_es);
 			} else
 				// ignore this branch
@@ -377,6 +383,15 @@ continue_val_end:
 		}
 
 printf("got val: '%s'\n\n", ks->str);
+
+		// check for skip
+		if(ks->depth_ignored)
+			goto skip_empty_object;
+
+		// check for array
+		if(ks->array_max && ks->array_idx < ks->array_max)
+			// array can fit this index
+			ks->element = ks->array_el;
 
 		// process this value
 		if(ks->element)
@@ -726,14 +741,7 @@ printf("got val: '%s'\n\n", ks->str);
 					}
 				}
 			}
-		}
-
-		if(ks->array_max)
-		{
-			ks->array_idx++;
-			if(ks->array_idx == ks->array_max)
-				// array can't be bigger
-				ks->element = NULL;
+			ks->element = NULL;
 		}
 
 skip_empty_object:

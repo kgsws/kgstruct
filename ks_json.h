@@ -40,6 +40,7 @@ typedef struct
 	void *data;
 	const kgstruct_template_t *template;
 	const kgstruct_template_t *element;
+	const kgstruct_template_t *array_el;
 	uint8_t str[KS_JSON_MAX_STRING_LENGTH];
 	uint8_t *ptr;
 	uint32_t dbit[(KS_JSON_MAX_DEPTH+31) >> 5];
