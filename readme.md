@@ -41,8 +41,9 @@ JSON parser is capable of skipping unknown values.
   - This affects *any* JSON string - so keys and values.
 - `KS_JSON_MAX_DEPTH` Maximum JSON recursion.
   - Keep in mind that ignored values are also counted into recursion.
+  - Every recursion takes a bit of memory, even if never used.
 - `KS_JSON_ALLOW_STRING_NUMBERS` Allow parsing numeric values from JSON strings.
-  - This exists to support broken generators that export everything as a strings.
+  - This exists to support broken generators that export everything as strings.
 
 ## TODO
 
