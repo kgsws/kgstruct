@@ -9,7 +9,7 @@
 #include "structs.h" // generated file
 
 static kgstruct_json_t ks;
-static uint8_t buffer[2048];
+static uint8_t buffer[16 * 1024];
 static int size;
 static int fd;
 
@@ -17,6 +17,9 @@ static test_struct_t test_struct[2];
 
 static void dump_struct(test_struct_t *in)
 {
+	printf("time_split: %02u:%02u:%02u\n", in->time_split.h, in->time_split.m, in->time_split.s);
+	printf("time_mult: %02u:%02u:%02u (%u)\n", in->time_mult / 3600000, (in->time_mult / 60000) % 60, (in->time_mult / 1000) % 60, in->time_mult);
+
 	printf("test_u8: %u\n", in->test_u8);
 	printf("test_u16: %u\n", in->test_u16);
 	printf("test_u32: %u\n", in->test_u32);
@@ -54,10 +57,26 @@ static void dump_struct(test_struct_t *in)
 	printf("insidE.value_u32: %u\n", in->insidE.value_u32);
 	printf("insidE.meta.meta_u32: %u\n", in->insidE.meta.meta_u32);
 	printf("insidE.meta.meta_s32: %d\n", in->insidE.meta.meta_s32);
+
+	for(uint32_t i = 0; i < 4; i++)
+	{
+		printf("meta_array[%i].meta_u32: %u\n", i, in->meta_array[i].meta_u32);
+		printf("meta_array[%i].meta_s32: %d\n", i, in->meta_array[i].meta_s32);
+		printf("meta_array[%i].sub[0].test: %d\n", i, in->meta_array[i].sub[0].test);
+		printf("meta_array[%i].sub[0].text: %s\n", i, in->meta_array[i].sub[0].text);
+		printf("meta_array[%i].sub[1].test: %d\n", i, in->meta_array[i].sub[1].test);
+		printf("meta_array[%i].sub[1].text: %s\n", i, in->meta_array[i].sub[1].text);
+	}
 }
 
 int main(int argc, char **argv)
 {
+	int ret;
+	uint8_t *ptr;
+
+	// BEWARE!
+	// This is only a test code, there are no overflow checks.
+
 	if(argc < 2)
 	{
 		printf("usage: %s test.json\n", argv[0]);
@@ -74,10 +93,14 @@ int main(int argc, char **argv)
 	size = read(fd, buffer, sizeof(buffer));
 	close(fd);
 
+	//
+	// IMPORT
+
 	// check full
 	printf("== FULL ==========\n");
 	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
-	ks_json_parse(&ks, buffer, size);
+	ret = ks_json_parse(&ks, buffer, size);
+	printf("ret: %u\n", ret);
 
 	// check stepped
 	printf("\n== STEP ==========\n");
@@ -96,6 +119,36 @@ int main(int argc, char **argv)
 	else
 		printf("*MATCH*\n");
 
+	//
+	// EXPORT
+	memset(buffer, 0, sizeof(buffer));
+
+	// check full
+	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
+ks.escaped = 1; // readable
+	ret = ks_json_export(&ks, buffer, sizeof(buffer) / 2);
+	printf("export length: %u\n", ret);
+
+	// check stepped
+	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
+ks.escaped = 1; // readable
+	ptr = buffer + sizeof(buffer) / 2;
+	while(1)
+	{
+		if(!ks_json_export(&ks, ptr, 1))
+			break;
+		ptr++;
+	}
+
+	// print export output
+	printf("==== OUTPUT ====\n%s\n================\n", buffer);
+
+	if(strcmp(buffer, buffer + sizeof(buffer) / 2))
+		printf("*MISMATCH*\n");
+	else
+		printf("*MATCH*\n");
+
 	return 0;
 }
+
 

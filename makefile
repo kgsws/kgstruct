@@ -9,7 +9,7 @@ CFLAGS = ${OPT}
 build: ${KSOBJ} ${program}
 
 structs.c: structs.json
-	./ks_generator.py structs.json structs
+	./ks_generator.py -code structs.json structs
 
 clean:
 	rm -f *.o ${program} $(KSOBJ:.o=.c) $(KSOBJ:.o=.h)

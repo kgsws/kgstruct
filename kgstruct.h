@@ -1,10 +1,11 @@
 
 // configuration
-#define KGSTRUCT_MAX_64K	// structures are no bigger than 64k
-#define KGSTRUCT_ENABLE_MINAX	// enable limits on numbers
+#define KGSTRUCT_ENABLE_MINMAX	// enable limits on numbers
 #define KGSTRUCT_ENABLE_US64	// enable uint64_t and int64_t
 #define KGSTRUCT_ENABLE_FLOAT	// enable usage of 'float'
 #define KGSTRUCT_ENABLE_DOUBLE	// enable usage of 'double'
+#define KGSTRUCT_ENABLE_TIME_SPLIT	// enable usage of 'time_split'
+#define KGSTRUCT_ENABLE_TIME_MULT	// enable usage of 'time_mult'
 
 //
 // internal stuff
@@ -15,6 +16,7 @@
 #define KGSTRUCT_NUMBER_SMAX	0x7FFFFFFF
 #endif
 
+// types
 enum
 {
 	KS_TYPEDEF_U8,
@@ -33,21 +35,34 @@ enum
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	KS_TYPEDEF_DOUBLE,
 #endif
-	// types without hardcoded size
-	KS_TYPEDEF_STRUCT,
-	KS_TYPEDEF_STRING,
-	// flags
-	KS_TYPEMASK_TYPE = 0x000000FF,
-	KS_TYPEMASK_ARRAY = 0x00FFFF00,
-	KS_TYPESHIFT_ARRAY = 8,
-	KS_TYPEFLAG_IS_ARRAY = 0x80000000,
-#ifdef KGSTRUCT_ENABLE_MINAX
-	KS_TYPEFLAG_HAS_MIN = 0x40000000,
-	KS_TYPEFLAG_HAS_MAX = 0x20000000,
+#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
+	KS_TYPEDEF_TIME_SPLIT,
 #endif
+#ifdef KGSTRUCT_ENABLE_TIME_MULT
+	KS_TYPEDEF_TIME_MULT,
+#endif
+	// non-value types (strings and stuff)
+	KS_TYPEDEF_STRING,
+	KS_TYPEDEF_STRUCT,
 };
+#define KS_TYPE_LAST_NUMERIC	KS_TYPEDEF_STRING
 
-#define KS_TYPE_ARRAY_DEF(i)	(KS_TYPEFLAG_IS_ARRAY | ((i) << KS_TYPESHIFT_ARRAY))
+// flags
+#define KS_TYPEFLAG_HAS_MIN	1
+#define KS_TYPEFLAG_HAS_MAX	2
+#define KS_TYPEFLAG_IGNORE_LIMITED	4
+
+#define KS_TYPEFLAG_HAS_SECONDS	1
+
+//
+// secial types
+
+// time, split into elements
+typedef struct
+{
+	uint8_t h, m, s;
+	uint8_t unused;
+} kgstruct_time_t;
 
 //
 // pointer access
@@ -74,6 +89,9 @@ typedef union
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	double f64;
 #endif
+#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
+	kgstruct_time_t time;
+#endif
 } kgstruct_number_t;
 
 //
@@ -81,77 +99,91 @@ typedef union
 
 typedef struct
 {
-	uint32_t type;
+	uint16_t type;
+	uint16_t flags;
+	uint32_t array;
+	uint32_t size;
 } kgstruct_base_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-} kgstruct_base_base_t;
+} kgstruct_base_only_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-#ifdef KGSTRUCT_MAX_64K
-	uint32_t extra[1];
-#else
-	uint16_t extra[1];
-#endif
-} kgstruct_object_t;
-
-typedef struct
-{
-	kgstruct_base_t base;
-	uint32_t extra[1];
 } kgstruct_string_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	int8_t extra[2];
+	const struct ks_template_s *template;
+} kgstruct_object_t;
+
+typedef struct
+{
+	kgstruct_base_t base;
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	int8_t min, max;
+#endif
 } kgstruct_s8_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	uint8_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	uint8_t min, max;
+#endif
 } kgstruct_u8_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	int16_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	int16_t min, max;
+#endif
 } kgstruct_s16_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	uint16_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	uint16_t min, max;
+#endif
 } kgstruct_u16_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	int32_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	int32_t min, max;
+#endif
 } kgstruct_s32_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	uint32_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	uint32_t min, max;
+#endif
 } kgstruct_u32_t;
 
 #ifdef KGSTRUCT_ENABLE_US64
 typedef struct
 {
 	kgstruct_base_t base;
-	int64_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	int64_t min, max;
+#endif
 } kgstruct_s64_t;
 
 typedef struct
 {
 	kgstruct_base_t base;
-	uint64_t extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	uint64_t min, max;
+#endif
 } kgstruct_u64_t;
 #endif
 
@@ -159,7 +191,9 @@ typedef struct
 typedef struct
 {
 	kgstruct_base_t base;
-	float extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	float min, max;
+#endif
 } kgstruct_float_t;
 #endif
 
@@ -167,7 +201,9 @@ typedef struct
 typedef struct
 {
 	kgstruct_base_t base;
-	double extra[2];
+#ifdef KGSTRUCT_ENABLE_MINMAX
+	double min, max;
+#endif
 } kgstruct_double_t;
 #endif
 
@@ -197,15 +233,10 @@ typedef union
 //
 // template
 
-typedef struct
+typedef struct ks_template_s
 {
-	const uint8_t *key;
-	const kgstruct_type_t *info;
-#ifdef KGSTRUCT_MAX_64K
-	uint16_t offset;
-#else
+	uint8_t *key;
+	kgstruct_type_t *info;
 	uint32_t offset;
-#endif
-	uint16_t magic;
-} kgstruct_template_t;
+} ks_template_t;
 
