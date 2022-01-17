@@ -38,11 +38,11 @@ JSON parser is capable of sequenced importing / exporting. That is, you don't ha
 JSON parser is capable of skipping unknown values.
 
 - `KS_JSON_MAX_STRING_LENGTH` Maximum string length in bytes. NUL byte terminator also counts.
- - This affects *any* JSON string - so keys and values.
+  - This affects *any* JSON string - so keys and values.
 - `KS_JSON_MAX_DEPTH` Maximum JSON recursion.
- - Keep in mind that ignored values are also counted into recursion.
+  - Keep in mind that ignored values are also counted into recursion.
 - `KS_JSON_ALLOW_STRING_NUMBERS` Allow parsing numeric values from JSON strings.
- - This exists to support broken generators that export everything as a strings.
+  - This exists to support broken generators that export everything as a strings.
 
 ## TODO
 
@@ -50,5 +50,5 @@ Hmm ...
 
 - Documentation
 - More parsers
- - CBOR
- - ...
+  - CBOR
+  - ...
