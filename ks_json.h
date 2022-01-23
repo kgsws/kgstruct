@@ -31,6 +31,11 @@ typedef struct
 	uint32_t offset;
 	uint32_t step;
 	uint32_t limit;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	uint32_t fill_offset;
+	uint32_t fill_step;
+	uint32_t fill_idx;
+#endif
 } kgstruct_json_recursion_t;
 
 typedef struct kgstruct_json_s
@@ -42,6 +47,10 @@ typedef struct kgstruct_json_s
 	uint8_t val_type;
 	uint8_t depth;
 	void *data;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	void *fillinfo;
+	int32_t fill_idx;
+#endif
 #ifdef KS_JSON_PARSER
 	uint8_t str[KS_JSON_MAX_STRING_LENGTH];
 #endif
@@ -59,5 +68,5 @@ int ks_json_parse(kgstruct_json_t *ks, const uint8_t *buff, uint32_t length);
 #ifdef KS_JSON_EXPORTER
 uint32_t ks_json_export(kgstruct_json_t *ks, uint8_t *buff, uint32_t length);
 #endif
-void ks_json_init(kgstruct_json_t *ks, void *ptr, const ks_template_t *template);
+void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void *buffer, void *fillinfo);
 

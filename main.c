@@ -14,6 +14,7 @@ static int size;
 static int fd;
 
 static test_struct_t test_struct[2];
+static test_struct_tf test_fill;
 
 static void dump_struct(test_struct_t *in)
 {
@@ -67,6 +68,11 @@ static void dump_struct(test_struct_t *in)
 		printf("meta_array[%i].sub[1].test: %d\n", i, in->meta_array[i].sub[1].test);
 		printf("meta_array[%i].sub[1].text: %s\n", i, in->meta_array[i].sub[1].text);
 	}
+
+	printf("[FILL] test_u32a %u\n", test_fill.test_u32a);
+	printf("[FILL] meta_array %u;\n", test_fill.meta_array);
+	for(uint32_t i = 0; i < 4; i++)
+		printf(" meta_array[%u].sub %u\n", i, test_fill.__meta_array[i].sub);
 }
 
 int main(int argc, char **argv)
@@ -98,13 +104,13 @@ int main(int argc, char **argv)
 
 	// check full
 	printf("== FULL ==========\n");
-	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
+	ks_json_init(&ks, &ks_template__test_struct, test_struct + 0, &test_fill);
 	ret = ks_json_parse(&ks, buffer, size);
 	printf("ret: %u\n", ret);
 
 	// check stepped
 	printf("\n== STEP ==========\n");
-	ks_json_init(&ks, test_struct + 1, ks_template__test_struct);
+	ks_json_init(&ks, &ks_template__test_struct, test_struct + 1, NULL);
 	for(uint32_t i = 0; i < size; i++)
 		if(ks_json_parse(&ks, buffer + i, 1) != KS_JSON_MORE_DATA)
 			break;
@@ -124,13 +130,13 @@ int main(int argc, char **argv)
 	memset(buffer, 0, sizeof(buffer));
 
 	// check full
-	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
+	ks_json_init(&ks, &ks_template__test_struct, test_struct + 0, NULL);
 ks.escaped = 1; // readable
 	ret = ks_json_export(&ks, buffer, sizeof(buffer) / 2);
 	printf("export length: %u\n", ret);
 
 	// check stepped
-	ks_json_init(&ks, test_struct + 0, ks_template__test_struct);
+	ks_json_init(&ks, &ks_template__test_struct, test_struct + 0, NULL);
 ks.escaped = 1; // readable
 	ptr = buffer + sizeof(buffer) / 2;
 	while(1)

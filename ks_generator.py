@@ -25,6 +25,7 @@ type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
 
 type_has_min = "KS_TYPEFLAG_HAS_MIN"
 type_has_max = "KS_TYPEFLAG_HAS_MAX"
+type_has_empty = "KS_TYPEFLAG_EMPTY_ARRAY"
 type_has_seconds = "KS_TYPEFLAG_HAS_SECONDS"
 
 is_collapsed = True
@@ -45,18 +46,27 @@ def add_type(tdef):
 #
 # generate C and H file
 def generate_code(infile, outname):
+	enable_fill_info = False
 	# open and parse
 	with open(infile, "rb") as f:
 		data = json.loads(f.read().decode('utf8'), object_pairs_hook=OrderedDict)
 		if "options" in data:
 			config = data["options"]
-			# string type
+			# type for 'string'
 			if "string" in config:
 				type_c_string["ctype"] = config["string"]
+			# type for padding
 			if "padding" in config:
 				type_padding["ctype"] = config["padding"]
+			# type for 'fill info' structures
+			if "fill info" in config:
+				enable_fill_info = config["fill info"]
 		else:
 			config = {}
+		if "defs" in config:
+			defs = config["defs"]
+		else:
+			defs = {}
 		structures = data["structures"]
 
 	# parse all structures
@@ -85,7 +95,7 @@ def generate_code(infile, outname):
 				# special case for C strings
 				type_info_def = dict(type_c_string)
 				type_info_def["size"] = str(var_info["length"])
-				var_template["string"] = var_info["length"]
+				var_template["string"] = str(var_info["length"])
 			elif var_info["type"] == "time split":
 				# special case for 'time' in "H:M:S" format
 				type_info_def = dict(type_time_split)
@@ -119,6 +129,8 @@ def generate_code(infile, outname):
 			type_info_def["flags"] = var_flags
 			# array check
 			if "array" in var_info:
+				if "empty" in var_info and var_info["empty"]:
+					type_info_def["flags"] += "|" + type_has_empty
 				var_template["array"] = var_info["array"]
 				type_info_def["array"] = var_info["array"]
 			# element 'key'
@@ -130,6 +142,7 @@ def generate_code(infile, outname):
 			var_template["ctype"] = type_info_def["ctype"]
 			if "stype" in type_info_def:
 				var_template["type_info_str"] = "ks_info_%u" % add_type(type_info_def)
+				var_template["stype"] = type_info_def["stype"]
 			# add this element
 			struct_template[var_name] = var_template
 		# add this structure
@@ -138,9 +151,13 @@ def generate_code(infile, outname):
 	# generate H file
 	output = open("%s.h" % outname, "w")
 	output.write("// KGSTRUCT AUTO GENERATED FILE\n")
+	# export all defs
+	for def_name in defs:
+		output.write("#define %s\t%u\n" % (def_name, defs[def_name]))
 	# export all structures
 	for struct_name in struct_list:
 		struct = struct_list[struct_name]
+		# actual structure
 		output.write("typedef struct %s_s\n{\n" % struct_name)
 		# export all variables
 		for var_name in struct:
@@ -150,19 +167,45 @@ def generate_code(infile, outname):
 				output.write("[%u]" % var_info["padding"])
 			elif "string" in var_info:
 				if "array" in var_info:
-					output.write("[%u][%u]" % (var_info["array"], var_info["string"]))
+					output.write("[%s][%s]" % (var_info["array"], var_info["string"]))
 				else:
-					output.write("[%u]" % var_info["string"])
+					output.write("[%s]" % var_info["string"])
 			elif "array" in var_info:
-				output.write("[%u]" % var_info["array"])
+				output.write("[%s]" % var_info["array"])
 			output.write(";\n")
 		# structure ending
 		output.write("} %s_t;\n" % struct_name)
+	# optional 'fill info' structures
+	if enable_fill_info:
+		output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
+		# export all structures
+		for struct_name in struct_list:
+			struct = struct_list[struct_name]
+			# special structure
+			output.write("typedef struct %s_sf\n{\n" % struct_name)
+			# export all variables
+			for var_name in struct:
+				var_info = struct[var_name]
+				output.write("\tKGSTRUCT_FILLINFO_TYPE %s;\n" % var_name)
+			# export extra variables
+			for var_name in struct:
+				var_info = struct[var_name]
+				if "padding" in var_info:
+					continue
+				if var_info["stype"] == type_c_struct["stype"]:
+					output.write("\t%sf __%s" % (var_info["ctype"], var_name))
+					if "array" in var_info:
+						output.write("[%s]" % var_info["array"])
+					output.write(";\n")
+			# structure ending
+			output.write("} %s_tf;\n" % struct_name)
+		# end
+		output.write("#endif\n")
 	# extra newline
 	output.write("\n")
 	# all the templates
 	for struct_name in struct_list:
-		output.write("extern const ks_template_t ks_template__%s[];\n" % struct_name)
+		output.write("extern const struct ks_base_template_s ks_template__%s;\n" % struct_name)
 	# done
 	output.close()
 
@@ -184,7 +227,7 @@ def generate_code(infile, outname):
 		if "array" in type_info:
 			output.write("\t.base.array = %s,\n" % type_info["array"])
 		if "struct" in type_info:
-			output.write("\t.template = %s,\n" % type_info["struct"])
+			output.write("\t.basetemp = &%s,\n" % type_info["struct"])
 		output.write("#ifdef KGSTRUCT_ENABLE_MINMAX\n")
 		if "min" in type_info:
 			output.write("\t.min = %s,\n" % type_info["min"])
@@ -198,18 +241,28 @@ def generate_code(infile, outname):
 	# generate templates
 	for struct_name in struct_list:
 		struct = struct_list[struct_name]
-		output.write("const ks_template_t ks_template__%s[] =\n{\n" % struct_name)
+		output.write("const ks_base_template_t ks_template__%s =\n{\n" % struct_name)
+		# optional 'fill info'
+		if enable_fill_info:
+			output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
+			output.write("\t.fill_size = sizeof(%s_tf),\n" % struct_name)
+			output.write("#endif\n")
 		# export all (visible) variables
+		output.write("\t.template =\n\t{\n")
 		for var_name in struct:
 			var_info = struct[var_name]
 			if "type_info_str" in var_info:
-				output.write("\t{\n")
-				output.write("\t\t.key = \"%s\",\n" % var_info["name"])
-				output.write("\t\t.info = (kgstruct_type_t*)&%s,\n" % var_info["type_info_str"])
-				output.write("\t\t.offset = offsetof(%s_t,%s),\n" % (struct_name, var_name))
-				output.write("\t},\n")
+				output.write("\t\t{\n")
+				output.write("\t\t\t.key = \"%s\",\n" % var_info["name"])
+				output.write("\t\t\t.info = (kgstruct_type_t*)&%s,\n" % var_info["type_info_str"])
+				output.write("\t\t\t.offset = offsetof(%s_t,%s),\n" % (struct_name, var_name))
+				if enable_fill_info and var_info["stype"] == type_c_struct["stype"]:
+					output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
+					output.write("\t\t\t.fill_offs = offsetof(%s_tf,__%s),\n" % (struct_name, var_name))
+					output.write("#endif\n")
+				output.write("\t\t},\n")
 		# terminator
-		output.write("\t{}\n};\n")
+		output.write("\t\t{}\n\t}\n};\n")
 	# done
 	output.close()
 
@@ -217,6 +270,7 @@ def generate_code(infile, outname):
 # generate JSON schema
 def recursive_schema(structure_list, structure):
 	global is_collapsed
+	global defs
 	struct_schema = OrderedDict()
 	for var_name in structure:
 		var_info = structure[var_name]
@@ -240,7 +294,10 @@ def recursive_schema(structure_list, structure):
 		if var_type["type"] == "string":
 			# string
 			if "length" in var_info:
-				var_props["maxLength"] = var_info["length"] - 1
+				if isinstance(var_info["length"], str):
+					var_props["maxLength"] = defs[var_info["length"]] - 1
+				else:
+					var_props["maxLength"] = var_info["length"] - 1
 			if "pattern" in var_info:
 				var_props["pattern"] = var_info["pattern"]
 			if "enum" in var_info:
@@ -296,9 +353,13 @@ def recursive_schema(structure_list, structure):
 		if "array" in var_info:
 			arr_items = OrderedDict()
 			# size
-			var_type["maxItems"] = var_info["array"]
+			if isinstance(var_info["array"], str):
+				arr_size = defs[var_info["array"]]
+			else:
+				arr_size = var_info["array"]
+			var_type["maxItems"] = arr_size
 			if not "empty" in var_info or not var_info["empty"]:
-				var_type["minItems"] = var_info["array"]
+				var_type["minItems"] = arr_size
 			# change type
 			arr_items["type"] = var_type["type"]
 			var_type["type"] = "array"
@@ -326,10 +387,12 @@ def recursive_schema(structure_list, structure):
 	return struct_schema
 
 def generate_schema(infile, outfile, exportname):
+	global defs
 	# open and parse
 	with open(infile, "rb") as f:
 		data = json.loads(f.read().decode('utf8'), object_pairs_hook=OrderedDict)
 		structures = data["structures"]
+		defs = {}
 		config = {}
 		config["title"] = " "
 		config["format"] = "tabs"
@@ -337,6 +400,8 @@ def generate_schema(infile, outfile, exportname):
 		if "options" in data:
 			if "schema" in data["options"]:
 				config.update(data["options"]["schema"])
+			if "defs" in data["options"]:
+				defs = data["options"]["defs"]
 	if not exportname in structures:
 		raise Exception("Unknown schema struct '%s'!" % exportname)
 

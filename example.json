@@ -15,7 +15,8 @@
 	"test_s8": -123,
 	"test_s8": {"hax": "xah"},
 	"test_s64": -123456789123456789,
-	"inside": {
+	"inside":
+	{
 		"value_u16": 44332,
 		"value_u8": 91,
 		"value_u32": 91919191,
@@ -24,7 +25,8 @@
 			"meta_s32": -43211234
 		}
 	},
-	"insidE": {
+	"insidE":
+	{
 		"value_u16": 54433,
 		"value_u8": 222,
 		"value_u32": 222222222,
@@ -49,12 +51,13 @@
 		"empty": {},
 		"empty": []
 	},
-	"test_u32a": [
+	"test_u32a":
+	[
 		6666,
 		7777,
 		8888,
 		9999,
-		10101010,
+		10101010
 	],
 	"custom name": 2991,
 	"meta_array":
@@ -68,7 +71,7 @@
 				{"test": 5, "text": "five"}
 			]
 		},
-		{},
+		false,
 		{
 			"meta_u32": 321,
 			"meta_s32": -321,

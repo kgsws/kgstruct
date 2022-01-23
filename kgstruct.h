@@ -1,5 +1,6 @@
 
 // configuration
+#define KGSTRUCT_FILLINFO_TYPE	uint8_t // enable special 'fill info' structure
 #define KGSTRUCT_ENABLE_MINMAX	// enable limits on numbers
 #define KGSTRUCT_ENABLE_US64	// enable uint64_t and int64_t
 #define KGSTRUCT_ENABLE_FLOAT	// enable usage of 'float'
@@ -51,6 +52,7 @@ enum
 #define KS_TYPEFLAG_HAS_MIN	1
 #define KS_TYPEFLAG_HAS_MAX	2
 #define KS_TYPEFLAG_IGNORE_LIMITED	4
+#define KS_TYPEFLAG_EMPTY_ARRAY	8
 
 #define KS_TYPEFLAG_HAS_SECONDS	1
 
@@ -118,7 +120,7 @@ typedef struct
 typedef struct
 {
 	kgstruct_base_t base;
-	const struct ks_template_s *template;
+	const struct ks_base_template_s *basetemp;
 } kgstruct_object_t;
 
 typedef struct
@@ -238,5 +240,16 @@ typedef struct ks_template_s
 	uint8_t *key;
 	kgstruct_type_t *info;
 	uint32_t offset;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	uint32_t fill_offs;
+#endif
 } ks_template_t;
+
+typedef struct ks_base_template_s
+{
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	uint32_t fill_size;
+#endif
+	ks_template_t template[];
+} ks_base_template_t;
 

@@ -73,13 +73,6 @@ static uint8_t *export_array_next(kgstruct_json_t *ks, uint8_t *buff, uint8_t *e
 static uint8_t *export_array_nl_close(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end);
 static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end);
 
-static uint8_t *export_terminate_string(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
-{
-	*buff++ = 0;
-	ks->export_step = NULL;
-	return buff;
-}
-
 static uint8_t *export_object_close(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
 	*buff++ = '}';
@@ -105,13 +98,16 @@ static uint8_t *export_object_close(kgstruct_json_t *ks, uint8_t *buff, uint8_t 
 		} else
 			ks->export_step = export_next_key;
 	} else
-		ks->export_step = export_terminate_string;
+		ks->export_step = NULL;
 
 	return buff;
 }
 
 static uint8_t *export_next_key(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	ks->recursion[ks->depth].fill_idx++;
+#endif
 	ks->recursion[ks->depth].template++;
 	if(!ks->recursion[ks->depth].template->key)
 	{
@@ -141,6 +137,10 @@ static uint8_t *export_array_next_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_t
 
 static uint8_t *export_array_next(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	if(ks->recursion[ks->depth].template->info->base.type == KS_TYPEDEF_STRUCT)
+		ks->recursion[ks->depth].fill_offset += ks->recursion[ks->depth].template->info->object.basetemp->fill_size;
+#endif
 	*buff++ = ',';
 	ks->export_step = export_array_next_nl;
 	return buff;
@@ -294,9 +294,14 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 			else
 				ks->export_step = export_object_entry_nl;
 			ks->depth++;
-			ks->recursion[ks->depth].template = ks->recursion[ks->depth-1].template->info->object.template;
+			ks->recursion[ks->depth].template = ks->recursion[ks->depth-1].template->info->object.basetemp->template;
 			ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].template->offset;
 			ks->recursion[ks->depth].step = 0;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+			ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].template->fill_offs;
+			ks->recursion[ks->depth].fill_step = 0;
+			ks->recursion[ks->depth].fill_idx = 0;
+#endif
 		return buff;
 		default:
 			ks->ptr = "ERROR";
@@ -326,7 +331,12 @@ static uint8_t *export_array_start_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_
 static uint8_t *export_array_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
 	*buff++ = '[';
-	ks->export_step = export_array_start_nl;
+	if(!ks->recursion[ks->depth].limit)
+	{
+		ks->depth--;
+		ks->export_step = export_array_nl_close;
+	} else
+		ks->export_step = export_array_start_nl;
 	return buff;
 }
 
@@ -335,11 +345,22 @@ static uint8_t *export_key_separator_or_array(kgstruct_json_t *ks, uint8_t *buff
 	if(ks->recursion[ks->depth].template->info->base.array)
 	{
 		const ks_template_t *element = ks->recursion[ks->depth].template;
-
 		ks->depth++;
 		ks->recursion[ks->depth].template = element;
 		ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset;
 		ks->recursion[ks->depth].limit = ks->recursion[ks->depth].template->info->base.array;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+		ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset;
+		ks->recursion[ks->depth].fill_step = 0;
+		ks->recursion[ks->depth].fill_idx = ks->recursion[ks->depth-1].fill_idx;
+		if(ks->fillinfo && element->info->base.flags & KS_TYPEFLAG_EMPTY_ARRAY)
+		{
+			uint32_t depth = ks->depth - 1;
+			KGSTRUCT_FILLINFO_TYPE *count = ks->fillinfo + ks->recursion[depth].fill_offset + ks->recursion[depth].fill_idx * sizeof(KGSTRUCT_FILLINFO_TYPE);
+			if(*count < ks->recursion[ks->depth].limit)
+				ks->recursion[ks->depth].limit = *count;
+		}
+#endif
 		if(element->info->base.type < KS_TYPE_LAST_NUMERIC)
 			ks->recursion[ks->depth].step = kgstruct_type_size[element->info->base.type];
 		else
@@ -489,9 +510,31 @@ static uint8_t *get_unsigned(uint8_t *str, uint32_t *dst)
 
 #ifdef KS_JSON_PARSER
 
+#ifdef KGSTRUCT_FILLINFO_TYPE
+void update_fillinfo(kgstruct_json_t *ks, uint32_t depth, uint32_t what)
+{
+	if(!ks->fillinfo)
+		return;
+	if(ks->fill_idx < 0)
+		return;
+#ifdef KS_JSON_DEBUG
+	printf("FILLINFO: base offs %u; offs %u; what %u\n", ks->recursion[depth].fill_offset, ks->fill_idx, what);
+#endif
+	KGSTRUCT_FILLINFO_TYPE *counter = ks->fillinfo + ks->recursion[depth].fill_offset + ks->fill_idx * sizeof(KGSTRUCT_FILLINFO_TYPE);
+
+	if(what)
+		*counter = *counter + 1;
+	else
+		*counter = 0;
+}
+#endif
+
 int ks_json_parse(kgstruct_json_t *ks, const uint8_t *buff, uint32_t length)
 {
 	const uint8_t *end = buff + length;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	uint_fast8_t was_parsed;
+#endif
 
 	if(buff == end)
 		return KS_JSON_MORE_DATA;
@@ -588,6 +631,10 @@ continue_key_string:
 #endif
 		// find this key in the template
 		ks->element = NULL;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+		ks->fill_idx = -1;
+#endif
+		if(ks->recursion[ks->depth].template)
 		{
 			const ks_template_t *elm = ks->recursion[ks->depth].template;
 			while(elm->info)
@@ -598,6 +645,10 @@ continue_key_string:
 					printf("** found match for key at %u **\n", (uint32_t)(elm - ks->recursion[ks->depth].template));
 #endif
 					ks->element = elm;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+					ks->fill_idx = (uint32_t)(elm - ks->recursion[ks->depth].template);
+					update_fillinfo(ks, ks->depth, 0);
+#endif
 					break;
 				}
 				elm++;
@@ -635,11 +686,15 @@ continue_val_in_object:
 #ifdef KS_JSON_DEBUG
 		printf("base offset %u step %u limit %u; etype %d\n", ks->recursion[ks->depth].offset, ks->recursion[ks->depth].step, ks->recursion[ks->depth].limit, ks->element ? ks->element->info->base.type : -1);
 #endif
+
 		ks->recursion[ks->depth].offset += ks->recursion[ks->depth].step;
 		if(ks->recursion[ks->depth].offset >= ks->recursion[ks->depth].limit)
 		{
 			ks->element = NULL;
 			ks->recursion[ks->depth].template = NULL;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+			ks->fill_idx = -1;
+#endif
 		}
 
 		// prepare to read
@@ -670,6 +725,9 @@ continue_val_string:
 			// prepare object
 			buff++;
 			ks->array = '}';
+#ifdef KGSTRUCT_FILLINFO_TYPE
+			update_fillinfo(ks, ks->depth, 1);
+#endif
 			ks->depth++;
 			if(ks->depth >= KS_JSON_MAX_DEPTH)
 			{
@@ -679,10 +737,14 @@ continue_val_string:
 			// check for type match
 			if(ks->element && ks->element->info->base.type == KS_TYPEDEF_STRUCT)
 			{
-				ks->recursion[ks->depth].template = ks->element->info->object.template;
+				ks->recursion[ks->depth].template = ks->element->info->object.basetemp->template;
 				ks->recursion[ks->depth].offset = offset + ks->element->offset;
 #ifdef KS_JSON_DEBUG
 				printf("object; depth %u; offset %u\n\n", ks->depth, ks->recursion[ks->depth].offset);
+#endif
+#ifdef KGSTRUCT_FILLINFO_TYPE
+				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->element->fill_offs + ks->recursion[ks->depth-1].fill_step;
+				ks->recursion[ks->depth].fill_step = 0;
 #endif
 			} else
 			{
@@ -694,6 +756,9 @@ continue_val_string:
 			ks->recursion[ks->depth].step = 0;
 			ks->recursion[ks->depth].limit = 0xFFFFFFFF;
 			ks->element = NULL;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+			ks->fill_idx = -1;
+#endif
 			goto continue_key_in_object;
 		} else
 		if(*buff == '[')
@@ -718,12 +783,20 @@ continue_val_string:
 					ks->recursion[ks->depth].step = ks->element->info->base.size;
 				ks->recursion[ks->depth].offset = offset - ks->recursion[ks->depth].step;
 				ks->recursion[ks->depth].limit = offset + ks->recursion[ks->depth].step * ks->element->info->base.array;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+				ks->recursion[ks->depth].fill_step = 0;
+				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset;
+				ks->recursion[ks->depth].fill_idx = ks->fill_idx;
+#endif
 			} else
 			{
 				ks->recursion[ks->depth].template = dummy_object;
 				ks->recursion[ks->depth].step = 1;
 				ks->recursion[ks->depth].limit = 0;
 				ks->element = NULL;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+				ks->fill_idx = -1;
+#endif
 			}
 #ifdef KS_JSON_DEBUG
 			printf("array; depth %u\n\n", ks->depth);
@@ -767,9 +840,6 @@ continue_val_end:
 #ifdef KS_JSON_DEBUG
 		printf("got val: '%s'\n", ks->str);
 #endif
-		// check for skip
-//		if(ks->depth_ignored)
-//			goto skip_empty_object;
 
 		// process this value
 		if(ks->element)
@@ -777,6 +847,9 @@ continue_val_end:
 			uint32_t offset = ks->recursion[ks->depth].offset + ks->element->offset;
 #ifdef KS_JSON_DEBUG
 			printf("assign; offset %u; type %u; jtype %u\n", offset, ks->element->info->base.type, ks->val_type);
+#endif
+#ifdef KGSTRUCT_FILLINFO_TYPE
+			was_parsed = 0;
 #endif
 			if(ks->element->info->base.type == KS_TYPEDEF_STRING)
 			{
@@ -790,6 +863,9 @@ continue_val_end:
 					 ks->str[ks->element->info->base.size] = 0;
 				// copy the string
 				strcpy((void*)ks->data + offset, (void*)ks->str);
+#ifdef KGSTRUCT_FILLINFO_TYPE
+				was_parsed = 1;
+#endif
 			} else
 #ifdef KGSTRUCT_ENABLE_TIME_SPLIT
 			if(ks->element->info->base.type == KS_TYPEDEF_TIME_SPLIT)
@@ -815,6 +891,9 @@ continue_val_end:
 								tm->s = s;
 							else
 								tm->s = 0;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						}
 					}
 				}
@@ -845,6 +924,9 @@ continue_val_end:
 								value += s * 1000;
 
 							*tm = value;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						}
 					}
 				}
@@ -921,6 +1003,9 @@ continue_val_end:
 							if(val.uread > 0xFF)
 								break;
 							dst->u8 = val.u8;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						case KS_TYPEDEF_S8:
 							if(neg_bad)
@@ -958,6 +1043,9 @@ continue_val_end:
 							if(val.sread > 0x7F)
 								break;
 							dst->s8 = val.s8;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						// 16 bits
 						case KS_TYPEDEF_U16:
@@ -989,6 +1077,9 @@ continue_val_end:
 							if(val.uread > 0xFFFF)
 								break;
 							dst->u16 = val.u16;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						case KS_TYPEDEF_S16:
 							if(neg_bad)
@@ -1026,6 +1117,9 @@ continue_val_end:
 							if(val.sread > 0x7FFF)
 								break;
 							dst->s16 = val.s16;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						// 32 bits
 						case KS_TYPEDEF_U32:
@@ -1056,6 +1150,9 @@ continue_val_end:
 							if(val.uread > 0xFFFFFFFF)
 								break;
 							dst->u32 = val.u32;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						case KS_TYPEDEF_S32:
 							if(neg_bad)
@@ -1093,6 +1190,9 @@ continue_val_end:
 							if(val.sread > 0x7FFFFFFF)
 								break;
 							dst->s32 = val.s32;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						// 64 bits
 #ifdef KGSTRUCT_ENABLE_US64
@@ -1122,6 +1222,9 @@ continue_val_end:
 							}
 #endif
 							dst->u64 = val.u64;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 						case KS_TYPEDEF_S64:
 							if(neg_bad)
@@ -1153,6 +1256,9 @@ continue_val_end:
 							}
 #endif
 							dst->s64 = val.s64;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 						break;
 #endif
 						// float
@@ -1160,7 +1266,9 @@ continue_val_end:
 						case KS_TYPEDEF_FLOAT:
 						{
 							float old = dst->f32;
-
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 							if(neg_bad)
 								val.sread = -val.sread;
 
@@ -1201,6 +1309,9 @@ continue_val_end:
 									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 									{
 										dst->f32 = old;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+										was_parsed = 0;
+#endif
 										break;
 									} else
 										dst->f32 = ks->element->info->f32.min;
@@ -1213,6 +1324,9 @@ continue_val_end:
 									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 									{
 										dst->f32 = old;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+										was_parsed = 0;
+#endif
 										break;
 									} else
 										dst->f32 = ks->element->info->f32.max;
@@ -1227,7 +1341,9 @@ continue_val_end:
 						case KS_TYPEDEF_DOUBLE:
 						{
 							double old = dst->f64;
-
+#ifdef KGSTRUCT_FILLINFO_TYPE
+							was_parsed = 1;
+#endif
 							if(neg_bad)
 								val.sread = -val.sread;
 
@@ -1268,6 +1384,9 @@ continue_val_end:
 									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 									{
 										dst->f64 = old;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+										was_parsed = 0;
+#endif
 										break;
 									} else
 										dst->f64 = ks->element->info->f64.min;
@@ -1280,6 +1399,9 @@ continue_val_end:
 									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 									{
 										dst->f64 = old;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+										was_parsed = 0;
+#endif
 										break;
 									} else
 										dst->f64 = ks->element->info->f64.max;
@@ -1292,7 +1414,21 @@ continue_val_end:
 					}
 				}
 			}
+
+#ifdef KGSTRUCT_FILLINFO_TYPE
+			if(was_parsed || ks->array == ']')
+				update_fillinfo(ks, ks->depth, 1);
+#endif
 		}
+
+#ifdef KGSTRUCT_FILLINFO_TYPE
+		if(ks->array == ']')
+		{
+			const ks_template_t *element = ks->recursion[ks->depth].template;
+			if(element && element->info && element->info->base.type == KS_TYPEDEF_STRUCT)
+				ks->recursion[ks->depth].fill_step += element->info->object.basetemp->fill_size;
+		}
+#endif
 
 skip_empty_object:
 		while(*buff == ks->array)
@@ -1314,6 +1450,11 @@ skip_empty_object:
 			{
 				ks->array = ']';
 				ks->element = ks->recursion[ks->depth].template;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+				ks->fill_idx = ks->recursion[ks->depth].fill_idx;
+				if(ks->element && ks->element->info && ks->element->info->base.type == KS_TYPEDEF_STRUCT)
+					ks->recursion[ks->depth].fill_step += ks->element->info->object.basetemp->fill_size;
+#endif
 			} else
 				ks->array = '}';
 			buff++;
@@ -1372,10 +1513,16 @@ uint32_t ks_json_export(kgstruct_json_t *ks, uint8_t *buff, uint32_t length)
 }
 #endif
 
-void ks_json_init(kgstruct_json_t *ks, void *ptr, const ks_template_t *template)
+void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void *buffer, void *fillinfo)
 {
-	ks->data = ptr;
-	ks->recursion[0].template = template;
+	ks->data = buffer;
+#ifdef KGSTRUCT_FILLINFO_TYPE
+	ks->fillinfo = fillinfo;
+	ks->recursion[0].fill_offset = 0;
+	ks->recursion[0].fill_step = 0;
+	ks->recursion[0].fill_idx = 0;
+#endif
+	ks->recursion[0].template = basetemp->template;
 	ks->recursion[0].offset = 0;
 	ks->recursion[0].step = 0;
 	ks->recursion[0].limit = 0xFFFFFFFF;
