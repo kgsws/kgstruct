@@ -90,7 +90,7 @@ def generate_code(infile, outname):
 				var_template["padding"] = var_info["padding"]
 				# optional padding type
 				if "type" in var_info:
-					var_template["ctype"] = type_info_list[var_info["type"]]["ctype"]
+					type_info_def["ctype"] = type_info_list[var_info["type"]]["ctype"]
 			elif var_info["type"] == "string":
 				# special case for C strings
 				type_info_def = dict(type_c_string)
