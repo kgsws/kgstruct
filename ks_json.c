@@ -303,6 +303,9 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 			ks->recursion[ks->depth].fill_idx = 0;
 #endif
 		return buff;
+		case KS_TYPEDEF_CUSTOM:
+			ks->state = ks->recursion[ks->depth].template->info->custom.export(value, ks->ptr);
+		break;
 		default:
 			ks->ptr = "ERROR";
 			ks->state = 1;
@@ -897,7 +900,7 @@ continue_val_end:
 						}
 					}
 				}
-			} else			
+			} else
 #endif
 #ifdef KGSTRUCT_ENABLE_TIME_MULT
 			if(ks->element->info->base.type == KS_TYPEDEF_TIME_MULT)
@@ -930,7 +933,13 @@ continue_val_end:
 						}
 					}
 				}
-			} else			
+			} else
+#endif
+#ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
+			if(ks->element->info->base.type == KS_TYPEDEF_CUSTOM)
+			{
+				was_parsed = ks->element->info->custom.parse(ks->data + offset, ks->str, ks->val_type == JTYPE_STRING);
+			} else
 #endif
 #ifndef KS_JSON_ALLOW_STRING_NUMBERS
 			if(ks->val_type == JTYPE_OTHER)

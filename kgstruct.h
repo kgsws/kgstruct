@@ -7,6 +7,7 @@
 #define KGSTRUCT_ENABLE_DOUBLE	// enable usage of 'double'
 #define KGSTRUCT_ENABLE_TIME_SPLIT	// enable usage of 'time_split'
 #define KGSTRUCT_ENABLE_TIME_MULT	// enable usage of 'time_mult'
+#define KGSTRUCT_ENABLE_CUSTOM_TYPE	// enable custom types
 
 //
 // internal stuff
@@ -44,6 +45,9 @@ enum
 #endif
 	// non-value types (strings and stuff)
 	KS_TYPEDEF_STRING,
+#ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
+	KS_TYPEDEF_CUSTOM,
+#endif
 	KS_TYPEDEF_STRUCT,
 };
 #define KS_TYPE_LAST_NUMERIC	KS_TYPEDEF_STRING
@@ -111,6 +115,15 @@ typedef struct
 {
 	kgstruct_base_t base;
 } kgstruct_base_only_t;
+
+#ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
+typedef struct
+{
+	kgstruct_base_t base;
+	uint32_t (*parse)(void *dst, const uint8_t *text, uint32_t is_string);
+	uint32_t (*export)(void *src, uint8_t *text);
+} kgstruct_custom_t;
+#endif
 
 typedef struct
 {
@@ -212,6 +225,8 @@ typedef struct
 typedef union
 {
 	kgstruct_base_t base;
+	kgstruct_base_only_t base_only;
+	kgstruct_custom_t custom;
 	kgstruct_string_t string;
 	kgstruct_object_t object;
 	kgstruct_s8_t s8;

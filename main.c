@@ -18,6 +18,8 @@ static test_struct_tf test_fill;
 
 static void dump_struct(test_struct_t *in)
 {
+	printf("custom_test: 0x%08X\n", in->custom_test);
+
 	printf("time_split: %02u:%02u:%02u\n", in->time_split.h, in->time_split.m, in->time_split.s);
 	printf("time_mult: %02u:%02u:%02u (%u)\n", in->time_mult / 3600000, (in->time_mult / 60000) % 60, (in->time_mult / 1000) % 60, in->time_mult);
 
@@ -73,6 +75,33 @@ static void dump_struct(test_struct_t *in)
 	printf("[FILL] meta_array %u;\n", test_fill.meta_array);
 	for(uint32_t i = 0; i < 4; i++)
 		printf(" meta_array[%u].sub %u\n", i, test_fill.__meta_array[i].sub);
+}
+
+uint32_t custom_value_parse(void *dst, const uint8_t *text, uint32_t is_string)
+{
+	// example of custom parser
+	// copy ASCII characters to uint32_t
+	uint32_t *number;
+
+	if(!is_string)
+		// value was not handled
+		return 0;
+
+	number = dst;
+	*number = 0;
+	strncpy((void*)number, text, sizeof(uint32_t));
+
+	// value was handled
+	return 1;
+}
+
+uint32_t custom_value_export(void *src, uint8_t *text)
+{
+	// example of custom exporter
+	// copy uint32_t to ASCII characters
+	memcpy(text, src, sizeof(uint32_t));
+	text[sizeof(uint32_t)] = 0;
+	return 1; // it's a string
 }
 
 int main(int argc, char **argv)

@@ -7,6 +7,15 @@
 		{
 			"SUB_TEXT_LEN": 28,
 			"META_SUB_SIZE": 2
+		},
+		"types":
+		{
+			"custom":
+			{
+				"type": "uint32_t",
+				"parser": "custom_value_parse",
+				"exporter": "custom_value_export"
+			}
 		}
 	},
 	"structures":
@@ -52,7 +61,8 @@
 			"test_limit3": {"type": "u32", "min": 666, "max": 777},
 			"meta_array": {"type": "meta_struct", "array": 4, "empty": true},
 			"time_split": {"type": "time split", "seconds": true},
-			"time_mult": {"type": "time", "seconds": true}
+			"time_mult": {"type": "time", "seconds": true},
+			"custom_test": {"type": "custom"}
 		}
 	}
 }

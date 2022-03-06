@@ -22,6 +22,8 @@ type_time_split = {"ctype": "kgstruct_time_t", "stype": "KS_TYPEDEF_TIME_SPLIT",
 type_time_mult = {"ctype": "uint32_t", "stype": "KS_TYPEDEF_TIME_MULT", "ktype": "kgstruct_base_only_t"}
 type_c_string = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_STRING", "ktype": "kgstruct_string_t"}
 type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
+type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
+type_custom_list = {}
 
 type_has_min = "KS_TYPEFLAG_HAS_MIN"
 type_has_max = "KS_TYPEFLAG_HAS_MAX"
@@ -67,6 +69,8 @@ def generate_code(infile, outname):
 			defs = config["defs"]
 		else:
 			defs = {}
+		if "types" in config:
+			type_custom_list = config["types"]
 		structures = data["structures"]
 
 	# parse all structures
@@ -122,6 +126,17 @@ def generate_code(infile, outname):
 					type_info_def["ctype"] = var_info["type"] + "_t"
 					type_info_def["size"] = "sizeof(%s_t)" % var_info["type"]
 					type_info_def["struct"] = "ks_template__" + var_info["type"]
+				elif var_info["type"] in type_custom_list:
+					# custom type
+					custom_type = type_custom_list[var_info["type"]]
+					type_info_def = {}
+					type_info_def["ctype"] = custom_type["type"]
+					if "parser" in custom_type:
+						type_info_def["parser"] = custom_type["parser"]
+					if "exporter" in custom_type:
+						type_info_def["exporter"] = custom_type["exporter"]
+					type_info_def["stype"] = type_custom_base["stype"]
+					type_info_def["ktype"] = type_custom_base["ktype"]
 				else:
 					# invalid type
 					raise Exception("Unknown type name '%s' for '%s' in '%s'." % (var_info["type"], var_name, struct_name))
@@ -154,6 +169,13 @@ def generate_code(infile, outname):
 	# export all defs
 	for def_name in defs:
 		output.write("#define %s\t%u\n" % (def_name, defs[def_name]))
+	# export all custom parsers
+	for custom_name in type_custom_list:
+		custom_info = type_custom_list[custom_name]
+		if "parser" in custom_info:
+			output.write("uint32_t %s(void *, const uint8_t *, uint32_t);\n" % custom_info["parser"])
+		if "exporter" in custom_info:
+			output.write("uint32_t %s(void *, uint8_t *);\n" % custom_info["exporter"])
 	# export all structures
 	for struct_name in struct_list:
 		struct = struct_list[struct_name]
@@ -228,6 +250,10 @@ def generate_code(infile, outname):
 			output.write("\t.base.array = %s,\n" % type_info["array"])
 		if "struct" in type_info:
 			output.write("\t.basetemp = &%s,\n" % type_info["struct"])
+		if "parser" in type_info:
+			output.write("\t.parse = %s,\n" % type_info["parser"])
+		if "exporter" in type_info:
+			output.write("\t.export = %s,\n" % type_info["exporter"])
 		output.write("#ifdef KGSTRUCT_ENABLE_MINMAX\n")
 		if "min" in type_info:
 			output.write("\t.min = %s,\n" % type_info["min"])
