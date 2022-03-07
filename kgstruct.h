@@ -262,9 +262,7 @@ typedef struct ks_template_s
 
 typedef struct ks_base_template_s
 {
-#ifdef KGSTRUCT_FILLINFO_TYPE
 	uint32_t fill_size;
-#endif
 	ks_template_t template[];
 } ks_base_template_t;
 

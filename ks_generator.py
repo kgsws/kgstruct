@@ -23,7 +23,6 @@ type_time_mult = {"ctype": "uint32_t", "stype": "KS_TYPEDEF_TIME_MULT", "ktype":
 type_c_string = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_STRING", "ktype": "kgstruct_string_t"}
 type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
 type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
-type_custom_list = {}
 
 type_has_min = "KS_TYPEFLAG_HAS_MIN"
 type_has_max = "KS_TYPEFLAG_HAS_MAX"
@@ -71,6 +70,8 @@ def generate_code(infile, outname):
 			defs = {}
 		if "types" in config:
 			type_custom_list = config["types"]
+		else:
+			type_custom_list = {}
 		structures = data["structures"]
 
 	# parse all structures

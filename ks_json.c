@@ -938,7 +938,10 @@ continue_val_end:
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 			if(ks->element->info->base.type == KS_TYPEDEF_CUSTOM)
 			{
-				was_parsed = ks->element->info->custom.parse(ks->data + offset, ks->str, ks->val_type == JTYPE_STRING);
+#ifdef KGSTRUCT_FILLINFO_TYPE
+				was_parsed =
+#endif
+					ks->element->info->custom.parse(ks->data + offset, ks->str, ks->val_type == JTYPE_STRING);
 			} else
 #endif
 #ifndef KS_JSON_ALLOW_STRING_NUMBERS
