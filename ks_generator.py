@@ -72,6 +72,10 @@ def generate_code(infile, outname):
 			type_custom_list = config["types"]
 		else:
 			type_custom_list = {}
+		if "include" in config:
+			include_list = config["include"]
+		else:
+			include_list = {}
 		structures = data["structures"]
 
 	# parse all structures
@@ -236,6 +240,8 @@ def generate_code(infile, outname):
 	output = open("%s.c" % outname, "w")
 	output.write("#include <stdint.h>\n")
 	output.write("#include <stddef.h>\n")
+	for value in include_list:
+		output.write("#include \"%s\"\n" % value)
 	output.write("#include \"kgstruct.h\"\n")
 	output.write("#include \"%s.h\"\n" % outname)
 	output.write("// KGSTRUCT AUTO GENERATED FILE\n")
