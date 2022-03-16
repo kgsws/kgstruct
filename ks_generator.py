@@ -18,8 +18,6 @@ type_info_list = {
 	"f64": {"ctype": "double", "stype": "KS_TYPEDEF_DOUBLE", "ktype": "kgstruct_double_t"}
 }
 type_padding = {"ctype": "uint8_t"}
-type_time_split = {"ctype": "kgstruct_time_t", "stype": "KS_TYPEDEF_TIME_SPLIT", "ktype": "kgstruct_base_only_t"}
-type_time_mult = {"ctype": "uint32_t", "stype": "KS_TYPEDEF_TIME_MULT", "ktype": "kgstruct_base_only_t"}
 type_c_string = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_STRING", "ktype": "kgstruct_string_t"}
 type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
 type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
@@ -105,16 +103,6 @@ def generate_code(infile, outname):
 				type_info_def = dict(type_c_string)
 				type_info_def["size"] = str(var_info["length"])
 				var_template["string"] = str(var_info["length"])
-			elif var_info["type"] == "time split":
-				# special case for 'time' in "H:M:S" format
-				type_info_def = dict(type_time_split)
-				if "seconds" in var_info and var_info["seconds"]:
-					var_flags += "|" + type_has_seconds
-			elif var_info["type"] == "time":
-				# special case for 'time' in "H * 3600000 + M * 60000 + S * 1000" format
-				type_info_def = dict(type_time_mult)
-				if "seconds" in var_info and var_info["seconds"]:
-					var_flags += "|" + type_has_seconds
 			elif var_info["type"] in type_info_list:
 				type_info_def = dict(type_info_list[var_info["type"]])
 				# min / max
@@ -317,12 +305,7 @@ def recursive_schema(structure_list, structure):
 		if "collapsed" in var_info:
 			var_options["collapsed"] = var_info["collapsed"]
 		# type remap
-		if var_info["type"] == "time":
-			var_type["type"] = "string"
-		elif var_info["type"] == "time split":
-			var_type["type"] = "string"
-		else:
-			var_type["type"] = var_info["type"]
+		var_type["type"] = var_info["type"]
 		# get element type
 		if var_type["type"] == "string":
 			# string
