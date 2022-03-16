@@ -55,12 +55,6 @@ static const uint8_t kgstruct_type_size[] =
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	[KS_TYPEDEF_DOUBLE] = sizeof(double),
 #endif
-#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
-	[KS_TYPEDEF_TIME_SPLIT] = sizeof(kgstruct_time_t),
-#endif
-#ifdef KGSTRUCT_ENABLE_TIME_MULT
-	[KS_TYPEDEF_TIME_MULT] = sizeof(uint32_t),
-#endif
 };
 
 //
@@ -266,22 +260,6 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 		case KS_TYPEDEF_DOUBLE:
 			sprintf(ks->str, "%lf", value->f64);
-		break;
-#endif
-#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
-		case KS_TYPEDEF_TIME_SPLIT:
-			sprintf(ks->str, "%02u:%02u:%02u", value->time.h, value->time.m, value->time.s);
-			if(!(ks->recursion[ks->depth].template->info->base.flags & KS_TYPEFLAG_HAS_SECONDS))
-				ks->str[5] = 0;
-			ks->state = 1;
-		break;
-#endif
-#ifdef KGSTRUCT_ENABLE_TIME_MULT
-		case KS_TYPEDEF_TIME_MULT:
-			sprintf(ks->str, "%02u:%02u:%02u", value->u32 / 3600000, (value->u32 / 60000) % 60, (value->u32 / 1000) % 60);
-			if(!(ks->recursion[ks->depth].template->info->base.flags & KS_TYPEFLAG_HAS_SECONDS))
-				ks->str[5] = 0;
-			ks->state = 1;
 		break;
 #endif
 		case KS_TYPEDEF_STRING:
@@ -870,71 +848,6 @@ continue_val_end:
 				was_parsed = 1;
 #endif
 			} else
-#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
-			if(ks->element->info->base.type == KS_TYPEDEF_TIME_SPLIT)
-			{
-#ifdef KS_JSON_DEBUG
-				printf("* time (split)\n");
-#endif
-				if(ks->val_type == JTYPE_STRING)
-				{
-					uint32_t len;
-					uint32_t h, m;
-					uint32_t s = 0;
-
-					len = sscanf(ks->str, "%u:%u:%u", &h, &m, &s);
-					if(len >= 2 && h < 24 && m < 60)
-					{
-						if(len <= 2 || s < 60)
-						{
-							kgstruct_time_t *tm = ks->data + offset;
-							tm->h = h;
-							tm->m = m;
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_SECONDS)
-								tm->s = s;
-							else
-								tm->s = 0;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						}
-					}
-				}
-			} else
-#endif
-#ifdef KGSTRUCT_ENABLE_TIME_MULT
-			if(ks->element->info->base.type == KS_TYPEDEF_TIME_MULT)
-			{
-#ifdef KS_JSON_DEBUG
-				printf("* time (mult)\n");
-#endif
-				if(ks->val_type == JTYPE_STRING)
-				{
-					uint32_t len;
-					uint32_t h, m;
-					uint32_t s = 0;
-
-					len = sscanf(ks->str, "%u:%u:%u", &h, &m, &s);
-					if(len >= 2 && h < 24 && m < 60)
-					{
-						if(len <= 2 || s < 60)
-						{
-							uint32_t value;
-							uint32_t *tm = ks->data + offset;
-
-							value = h * 3600000 + m * 60000;
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_SECONDS)
-								value += s * 1000;
-
-							*tm = value;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						}
-					}
-				}
-			} else
-#endif
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 			if(ks->element->info->base.type == KS_TYPEDEF_CUSTOM)
 			{

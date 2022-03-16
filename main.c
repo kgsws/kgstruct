@@ -20,9 +20,6 @@ static void dump_struct(test_struct_t *in)
 {
 	printf("custom_test: 0x%08X\n", in->custom_test);
 
-	printf("time_split: %02u:%02u:%02u\n", in->time_split.h, in->time_split.m, in->time_split.s);
-	printf("time_mult: %02u:%02u:%02u (%u)\n", in->time_mult / 3600000, (in->time_mult / 60000) % 60, (in->time_mult / 1000) % 60, in->time_mult);
-
 	printf("test_u8: %u\n", in->test_u8);
 	printf("test_u16: %u\n", in->test_u16);
 	printf("test_u32: %u\n", in->test_u32);

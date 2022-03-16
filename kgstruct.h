@@ -5,9 +5,8 @@
 #define KGSTRUCT_ENABLE_US64	// enable uint64_t and int64_t
 #define KGSTRUCT_ENABLE_FLOAT	// enable usage of 'float'
 #define KGSTRUCT_ENABLE_DOUBLE	// enable usage of 'double'
-#define KGSTRUCT_ENABLE_TIME_SPLIT	// enable usage of 'time_split'
-#define KGSTRUCT_ENABLE_TIME_MULT	// enable usage of 'time_mult'
 #define KGSTRUCT_ENABLE_CUSTOM_TYPE	// enable custom types
+#define KGSTRUCT_ENABLE_FLAGS	// enable boolean flags
 
 //
 // internal stuff
@@ -37,12 +36,6 @@ enum
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	KS_TYPEDEF_DOUBLE,
 #endif
-#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
-	KS_TYPEDEF_TIME_SPLIT,
-#endif
-#ifdef KGSTRUCT_ENABLE_TIME_MULT
-	KS_TYPEDEF_TIME_MULT,
-#endif
 	// non-value types (strings and stuff)
 	KS_TYPEDEF_STRING,
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
@@ -59,16 +52,6 @@ enum
 #define KS_TYPEFLAG_EMPTY_ARRAY	8
 
 #define KS_TYPEFLAG_HAS_SECONDS	1
-
-//
-// secial types
-
-// time, split into elements
-typedef struct
-{
-	uint8_t h, m, s;
-	uint8_t unused;
-} kgstruct_time_t;
 
 //
 // pointer access
@@ -94,9 +77,6 @@ typedef union
 #endif
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	double f64;
-#endif
-#ifdef KGSTRUCT_ENABLE_TIME_SPLIT
-	kgstruct_time_t time;
 #endif
 } kgstruct_number_t;
 

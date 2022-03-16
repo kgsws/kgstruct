@@ -60,8 +60,6 @@
 			"test_limit2": {"type": "u32", "min": 666, "max": 777},
 			"test_limit3": {"type": "u32", "min": 666, "max": 777},
 			"meta_array": {"type": "meta_struct", "array": 4, "empty": true},
-			"time_split": {"type": "time split", "seconds": true},
-			"time_mult": {"type": "time", "seconds": true},
 			"custom_test": {"type": "custom"}
 		}
 	}
