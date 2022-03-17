@@ -30,6 +30,7 @@ type_has_seconds = "KS_TYPEFLAG_HAS_SECONDS"
 is_collapsed = True
 
 export_types = []
+type_custom_list = {}
 
 ##
 def add_type(tdef):
@@ -45,6 +46,7 @@ def add_type(tdef):
 #
 # generate C and H file
 def generate_code(infile, outname):
+	global type_custom_list
 	enable_fill_info = False
 	# open and parse
 	with open(infile, "rb") as f:
@@ -68,8 +70,6 @@ def generate_code(infile, outname):
 			defs = {}
 		if "types" in config:
 			type_custom_list = config["types"]
-		else:
-			type_custom_list = {}
 		if "include" in config:
 			include_list = config["include"]
 		else:
@@ -305,7 +305,14 @@ def recursive_schema(structure_list, structure):
 		if "collapsed" in var_info:
 			var_options["collapsed"] = var_info["collapsed"]
 		# type remap
-		var_type["type"] = var_info["type"]
+		if var_info["type"] in type_custom_list:
+			custom = type_custom_list[var_info["type"]]
+			if "string" in custom and custom["string"]:
+				var_type["type"] = "string"
+			else:
+				var_type["type"] = "integer"
+		else:
+			var_type["type"] = var_info["type"]
 		# get element type
 		if var_type["type"] == "string":
 			# string
@@ -404,6 +411,7 @@ def recursive_schema(structure_list, structure):
 
 def generate_schema(infile, outfile, exportname):
 	global defs
+	global type_custom_list
 	# open and parse
 	with open(infile, "rb") as f:
 		data = json.loads(f.read().decode('utf8'), object_pairs_hook=OrderedDict)
@@ -418,6 +426,8 @@ def generate_schema(infile, outfile, exportname):
 				config.update(data["options"]["schema"])
 			if "defs" in data["options"]:
 				defs = data["options"]["defs"]
+		if "types" in data["options"]:
+			type_custom_list = data["options"]["types"]
 	if not exportname in structures:
 		raise Exception("Unknown schema struct '%s'!" % exportname)
 
