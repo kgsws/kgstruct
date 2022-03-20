@@ -2,6 +2,7 @@
 // configuration
 #define KS_JSON_MAX_STRING_LENGTH	64
 #define KS_JSON_MAX_DEPTH	32
+#define KS_JSON_LINE_COUNTER
 //#define KS_JSON_ALLOW_STRING_NUMBERS
 
 #define KS_JSON_PARSER
@@ -46,6 +47,9 @@ typedef struct kgstruct_json_s
 	uint8_t array;
 	uint8_t val_type;
 	uint8_t depth;
+#ifdef KS_JSON_LINE_COUNTER
+	uint16_t line;
+#endif
 	void *data;
 #ifdef KGSTRUCT_FILLINFO_TYPE
 	void *fillinfo;

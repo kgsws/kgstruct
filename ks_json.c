@@ -421,13 +421,17 @@ static uint8_t *export_object_entry(kgstruct_json_t *ks, uint8_t *buff, uint8_t 
 //
 // funcs
 
-static const uint8_t *skip_whitespace(const uint8_t *ptr, const uint8_t *end)
+static const uint8_t *skip_whitespace(kgstruct_json_t *ks, const uint8_t *ptr, const uint8_t *end)
 {
 	while(ptr < end)
 	{
 		register uint8_t tmp = *ptr;
 		if(tmp != ' ' && tmp != '\t' && tmp != '\n' && tmp != '\r')
 			break;
+#ifdef KS_JSON_LINE_COUNTER
+		if(tmp == '\n')
+			ks->line++;
+#endif
 		ptr++;
 	}
 	return ptr;
@@ -549,7 +553,7 @@ int ks_json_parse(kgstruct_json_t *ks, const uint8_t *buff, uint32_t length)
 	while(1)
 	{
 		// skip whitespaces
-		buff = skip_whitespace(buff, end);
+		buff = skip_whitespace(ks, buff, end);
 		if(buff >= end)
 		{
 			ks->state = KSTATE_START_OBJECT;
@@ -567,7 +571,7 @@ int ks_json_parse(kgstruct_json_t *ks, const uint8_t *buff, uint32_t length)
 continue_key_in_object:
 
 		// skip whitespaces
-		buff = skip_whitespace(buff, end);
+		buff = skip_whitespace(ks, buff, end);
 		if(buff >= end)
 		{
 			ks->state = KSTATE_KEY_IN_OBJECT;
@@ -638,7 +642,7 @@ continue_key_string:
 
 		// skip whitespaces
 continue_key_separator:
-		buff = skip_whitespace(buff, end);
+		buff = skip_whitespace(ks, buff, end);
 		if(buff >= end)
 		{
 			ks->state = KSTATE_KEY_SEPARATOR;
@@ -656,7 +660,7 @@ continue_key_separator:
 continue_val_in_object:
 
 		// skip whitespaces
-		buff = skip_whitespace(buff, end);
+		buff = skip_whitespace(ks, buff, end);
 		if(buff >= end)
 		{
 			ks->state = KSTATE_VAL_IN_OBJECT;
@@ -812,7 +816,7 @@ continue_val_other:
 
 		// skip whitespaces
 continue_val_end:
-		buff = skip_whitespace(buff, end);
+		buff = skip_whitespace(ks, buff, end);
 		if(buff >= end)
 		{
 			ks->state = KSTATE_VAL_END;
@@ -1385,7 +1389,7 @@ skip_empty_object:
 			buff++;
 			// skip whitespaces
 continue_termination:
-			buff = skip_whitespace(buff, end);
+			buff = skip_whitespace(ks, buff, end);
 			if(buff >= end)
 			{
 				ks->state = KSTATE_TERMINATION;
@@ -1457,6 +1461,9 @@ void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void 
 	ks->val_type = 0;
 	ks->array = '}';
 	ks->element = NULL;
+#ifdef KS_JSON_LINE_COUNTER
+	ks->line = 1;
+#endif
 #ifdef KS_JSON_EXPORTER
 	ks->export_step = export_object_entry;
 #endif
