@@ -216,78 +216,117 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 
 	value = ks->data + ks->recursion[ks->depth].offset + ks->recursion[ks->depth].template->offset;
 
-	switch(ks->recursion[ks->depth].template->info->base.type)
-	{
-		case KS_TYPEDEF_U8:
-			sprintf(ks->str, "%u", value->u8);
-		break;
-		case KS_TYPEDEF_S8:
-			sprintf(ks->str, "%d", value->s8);
-		break;
-		case KS_TYPEDEF_U16:
-			sprintf(ks->str, "%u", value->u16);
-		break;
-		case KS_TYPEDEF_S16:
-			sprintf(ks->str, "%d", value->s16);
-		break;
-		case KS_TYPEDEF_U32:
-			sprintf(ks->str, "%u", value->u32);
-		break;
-		case KS_TYPEDEF_S32:
-			sprintf(ks->str, "%d", value->s32);
-		break;
+	if(	ks->recursion[ks->depth].template->info->base.flags & KS_TYPEFLAG_IS_BOOL &&
+		ks->recursion[ks->depth].template->info->base.type < KS_TYPEDEF_STRING
+	){
+		kgstruct_number_t val;
+		val.uread = 0;
+		switch(ks->recursion[ks->depth].template->info->base.type)
+		{
+			case KS_TYPEDEF_U8:
+			case KS_TYPEDEF_S8:
+				val.u8 = value->u8;
+			break;
+			case KS_TYPEDEF_U16:
+			case KS_TYPEDEF_S16:
+				val.u16 = value->u16;
+			break;
+			case KS_TYPEDEF_U32:
+			case KS_TYPEDEF_S32:
+#ifdef KGSTRUCT_ENABLE_FLOAT
+			case KS_TYPEDEF_FLOAT:
+#endif
+				val.u32 = value->u32;
+			break;
+#ifdef KGSTRUCT_ENABLE_DOUBLE
+			case KS_TYPEDEF_DOUBLE:
+#endif
 #ifdef KGSTRUCT_ENABLE_US64
-		case KS_TYPEDEF_U64:
-#ifdef WINDOWS
-			sprintf(ks->str, "%I64u", value->u64);
-#else
-			sprintf(ks->str, "%lu", value->u64);
+			case KS_TYPEDEF_U64:
+			case KS_TYPEDEF_S64:
 #endif
-		break;
-		case KS_TYPEDEF_S64:
+				val.u64 = value->u64;
+			break;
+		}
+		if(val.uread)
+			strcpy(ks->str, "true");
+		else
+			strcpy(ks->str, "false");
+	} else
+	{
+		switch(ks->recursion[ks->depth].template->info->base.type)
+		{
+			case KS_TYPEDEF_U8:
+				sprintf(ks->str, "%u", value->u8);
+			break;
+			case KS_TYPEDEF_S8:
+				sprintf(ks->str, "%d", value->s8);
+			break;
+			case KS_TYPEDEF_U16:
+				sprintf(ks->str, "%u", value->u16);
+			break;
+			case KS_TYPEDEF_S16:
+				sprintf(ks->str, "%d", value->s16);
+			break;
+			case KS_TYPEDEF_U32:
+				sprintf(ks->str, "%u", value->u32);
+			break;
+			case KS_TYPEDEF_S32:
+				sprintf(ks->str, "%d", value->s32);
+			break;
+#ifdef KGSTRUCT_ENABLE_US64
+			case KS_TYPEDEF_U64:
 #ifdef WINDOWS
-			sprintf(ks->str, "%I64d", value->s64);
+				sprintf(ks->str, "%I64u", value->u64);
 #else
-			sprintf(ks->str, "%ld", value->s64);
+				sprintf(ks->str, "%lu", value->u64);
 #endif
-		break;
+			break;
+			case KS_TYPEDEF_S64:
+#ifdef WINDOWS
+				sprintf(ks->str, "%I64d", value->s64);
+#else
+				sprintf(ks->str, "%ld", value->s64);
+#endif
+			break;
 #endif
 #ifdef KGSTRUCT_ENABLE_FLOAT
-		case KS_TYPEDEF_FLOAT:
-			sprintf(ks->str, "%f", value->f32);
-		break;
+			case KS_TYPEDEF_FLOAT:
+				sprintf(ks->str, "%f", value->f32);
+			break;
 #endif
 #ifdef KGSTRUCT_ENABLE_DOUBLE
-		case KS_TYPEDEF_DOUBLE:
-			sprintf(ks->str, "%lf", value->f64);
-		break;
+			case KS_TYPEDEF_DOUBLE:
+				sprintf(ks->str, "%lf", value->f64);
+			break;
 #endif
-		case KS_TYPEDEF_STRING:
-			ks->ptr = &value->u8;
-			ks->state = 1;
-		break;
-		case KS_TYPEDEF_STRUCT:
-			if(ks->recursion[ks->depth].step)
-				ks->export_step = export_object_entry;
-			else
-				ks->export_step = export_object_entry_nl;
-			ks->depth++;
-			ks->recursion[ks->depth].template = ks->recursion[ks->depth-1].template->info->object.basetemp->template;
-			ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].template->offset;
-			ks->recursion[ks->depth].step = 0;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-			ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].template->fill_offs;
-			ks->recursion[ks->depth].fill_step = 0;
-			ks->recursion[ks->depth].fill_idx = 0;
-#endif
-		return buff;
-		case KS_TYPEDEF_CUSTOM:
-			ks->state = ks->recursion[ks->depth].template->info->custom.export(value, ks->ptr);
-		break;
-		default:
-			ks->ptr = "ERROR";
-			ks->state = 1;
-		break;
+			case KS_TYPEDEF_STRING:
+				ks->ptr = &value->u8;
+				ks->state = 1;
+			break;
+			case KS_TYPEDEF_STRUCT:
+				if(ks->recursion[ks->depth].step)
+					ks->export_step = export_object_entry;
+				else
+					ks->export_step = export_object_entry_nl;
+				ks->depth++;
+				ks->recursion[ks->depth].template = ks->recursion[ks->depth-1].template->info->object.basetemp->template;
+				ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].template->offset;
+				ks->recursion[ks->depth].step = 0;
+	#ifdef KGSTRUCT_FILLINFO_TYPE
+				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].template->fill_offs;
+				ks->recursion[ks->depth].fill_step = 0;
+				ks->recursion[ks->depth].fill_idx = 0;
+	#endif
+			return buff;
+			case KS_TYPEDEF_CUSTOM:
+				ks->state = ks->recursion[ks->depth].template->info->custom.export(value, ks->ptr);
+			break;
+			default:
+				ks->ptr = "ERROR";
+				ks->state = 1;
+			break;
+		}
 	}
 
 	// export start

@@ -37,7 +37,7 @@ enum
 	KS_TYPEDEF_DOUBLE,
 #endif
 	// non-value types (strings and stuff)
-	KS_TYPEDEF_STRING,
+	KS_TYPEDEF_STRING, // string has to be first
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 	KS_TYPEDEF_CUSTOM,
 #endif
@@ -50,8 +50,7 @@ enum
 #define KS_TYPEFLAG_HAS_MAX	2
 #define KS_TYPEFLAG_IGNORE_LIMITED	4
 #define KS_TYPEFLAG_EMPTY_ARRAY	8
-
-#define KS_TYPEFLAG_HAS_SECONDS	1
+#define KS_TYPEFLAG_IS_BOOL	16
 
 //
 // pointer access

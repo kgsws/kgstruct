@@ -25,7 +25,7 @@ type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
 type_has_min = "KS_TYPEFLAG_HAS_MIN"
 type_has_max = "KS_TYPEFLAG_HAS_MAX"
 type_has_empty = "KS_TYPEFLAG_EMPTY_ARRAY"
-type_has_seconds = "KS_TYPEFLAG_HAS_SECONDS"
+type_is_bool = "KS_TYPEFLAG_IS_BOOL"
 
 is_collapsed = True
 
@@ -90,6 +90,7 @@ def generate_code(infile, outname):
 			if var_info["type"] == "boolean":
 				# modify the type
 				var_info["type"] = config["boolean"]
+				var_flags += "|" + type_is_bool
 			# get element type
 			if "padding" in var_info:
 				# special case for padding
@@ -362,10 +363,13 @@ def recursive_schema(structure_list, structure):
 		if "format" in var_info:
 			var_type["format"] = var_info["format"]
 		# options export
-		if var_type["type"] != "object":
+		if var_type["type"] != "object" and not "array" in var_info:
 			del var_options["collapsed"]
 		if len(var_options):
 			var_type["options"] = var_options
+		# read-only hint
+		if "readonly" in var_info and not "array" in var_info:
+			var_type["readonly"] = var_info["readonly"]
 		# not-array
 		if not "array" in var_info:
 			var_type.update(var_props)
@@ -396,6 +400,8 @@ def recursive_schema(structure_list, structure):
 				# array of objects
 				arr_items["properties"] = var_type["properties"]
 				del var_type["properties"]
+			if "readonly" in var_info:
+				arr_items["readonly"] = var_info["readonly"]
 			var_type["items"] = arr_items
 		# everything is required
 		if "properties" in var_type:
