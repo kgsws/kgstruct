@@ -42,7 +42,11 @@ typedef struct
 typedef struct kgstruct_json_s
 {
 	uint8_t state;
-	uint8_t error;
+	union
+	{
+		uint8_t error;
+		uint8_t readable;
+	};
 	uint8_t escaped;
 	uint8_t array;
 	uint8_t val_type;

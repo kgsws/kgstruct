@@ -105,7 +105,7 @@ static uint8_t *export_next_key(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end
 	ks->recursion[ks->depth].template++;
 	if(!ks->recursion[ks->depth].template->key)
 	{
-		if(ks->escaped)
+		if(ks->readable)
 		{
 			*buff++ = '\n';
 			ks->val_type = ks->depth;
@@ -120,7 +120,7 @@ static uint8_t *export_next_key(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end
 
 static uint8_t *export_array_next_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-	if(ks->escaped)
+	if(ks->readable)
 	{
 		*buff++ = '\n';
 		ks->val_type = ks->depth + 1;
@@ -149,7 +149,7 @@ static uint8_t *export_array_close(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 
 static uint8_t *export_array_nl_close(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-	if(ks->escaped)
+	if(ks->readable)
 	{
 		*buff++ = '\n';
 		ks->val_type = ks->depth + 1;
@@ -187,7 +187,33 @@ static uint8_t *export_value(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
 	while(*ks->ptr)
 	{
-		*buff++ = *ks->ptr++;
+		uint8_t tmp = *ks->ptr;
+		if(ks->escaped)
+		{
+			ks->escaped = 0;
+			ks->ptr++;
+			switch(tmp)
+			{
+				case '\n':
+					tmp = 'n';
+				break;
+				case '\r':
+					tmp = 'r';
+				break;
+				case '\t':
+					tmp = 't';
+				break;
+			}
+		} else
+		{
+			if(tmp == '\n' || tmp == '\r' || tmp == '\t' || tmp == '"' || tmp == '\\')
+			{
+				tmp = '\\';
+				ks->escaped = 1;
+			} else
+				ks->ptr++;
+		}
+		*buff++ = tmp;
 		if(buff == end)
 			return buff;
 	}
@@ -197,7 +223,7 @@ static uint8_t *export_value(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 
 static uint8_t *export_object_entry_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-	if(ks->escaped)
+	if(ks->readable)
 	{
 		*buff++ = '\n';
 		ks->val_type = ks->depth;
@@ -339,7 +365,7 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 
 static uint8_t *export_array_start_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-	if(ks->escaped)
+	if(ks->readable)
 	{
 		*buff++ = '\n';
 		ks->val_type = ks->depth + 1;
@@ -386,7 +412,7 @@ static uint8_t *export_key_separator_or_array(kgstruct_json_t *ks, uint8_t *buff
 		else
 			ks->recursion[ks->depth].step = element->info->base.size;
 
-		if(ks->escaped)
+		if(ks->readable)
 		{
 			*buff++ = '\n';
 			ks->val_type = ks->depth;
@@ -396,7 +422,7 @@ static uint8_t *export_key_separator_or_array(kgstruct_json_t *ks, uint8_t *buff
 		return buff;
 	}
 
-	if(ks->escaped && ks->recursion[ks->depth].template->info->base.type != KS_TYPEDEF_STRUCT)
+	if(ks->readable && ks->recursion[ks->depth].template->info->base.type != KS_TYPEDEF_STRUCT)
 		*buff++ = ' ';
 	ks->export_step = export_value_start;
 
@@ -439,7 +465,7 @@ static uint8_t *export_key_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *en
 
 static uint8_t *export_nl_indent_key(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-	if(ks->escaped)
+	if(ks->readable)
 	{
 		*buff++ = '\n';
 		ks->val_type = ks->depth + 1;
@@ -492,7 +518,27 @@ static const uint8_t *get_string(kgstruct_json_t *ks, const uint8_t *ptr, const 
 				continue;
 			}
 		} else
+		{
 			ks->escaped = 0;
+			switch(tmp)
+			{
+				case 'r':
+					tmp = '\r';
+				break;
+				case 'n':
+					tmp = '\n';
+				break;
+				case 't':
+					tmp = '\t';
+				break;
+				case 'b':
+					tmp = '\b';
+				break;
+				case 'f':
+					tmp = '\f';
+				break;
+			}
+		}
 		*ks->ptr++ = tmp;
 		if(ks->ptr == ks->str + KS_JSON_MAX_STRING_LENGTH)
 			return NULL;
@@ -1496,6 +1542,7 @@ void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void 
 	ks->recursion[0].limit = 0xFFFFFFFF;
 	ks->state = KSTATE_START_OBJECT;
 	ks->depth = 0;
+	ks->error = 0;
 	ks->escaped = 0;
 	ks->val_type = 0;
 	ks->array = '}';
