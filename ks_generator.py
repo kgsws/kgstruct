@@ -3,8 +3,6 @@ import sys
 import json
 from collections import OrderedDict
 
-comment_offsets = True
-
 type_info_list = {
 	"u8": {"ctype": "uint8_t", "stype": "KS_TYPEDEF_U8", "ktype": "kgstruct_u8_t", "min": 0, "max": 255},
 	"u16": {"ctype": "uint16_t", "stype": "KS_TYPEDEF_U16", "ktype": "kgstruct_u16_t", "min": 0, "max": 65535},
@@ -21,6 +19,15 @@ type_padding = {"ctype": "uint8_t"}
 type_c_string = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_STRING", "ktype": "kgstruct_string_t"}
 type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
 type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
+type_flags_base = {"stype": "KS_TYPEDEF_FLAGS", "ktype": "kgstruct_object_t"}
+type_flag_single = {"ktype": "kgstruct_custom_t", "flags": "0"}
+
+flags_type_list = {
+	"uint8_t": {"stype": "KS_TYPEDEF_FLAG8", "count": 8},
+	"uint16_t": {"stype": "KS_TYPEDEF_FLAG16", "count": 16},
+	"uint32_t": {"stype": "KS_TYPEDEF_FLAG32", "count": 32},
+	"uint64_t": {"stype": "KS_TYPEDEF_FLAG64", "count": 64}
+}
 
 type_has_min = "KS_TYPEFLAG_HAS_MIN"
 type_has_max = "KS_TYPEFLAG_HAS_MAX"
@@ -70,6 +77,13 @@ def generate_code(infile, outname):
 			defs = {}
 		if "types" in config:
 			type_custom_list = config["types"]
+			# generate flag types
+			for name in type_custom_list:
+				custom_type = type_custom_list[name]
+				if "flags" in custom_type:
+					type_info_def = dict(type_flag_single)
+					type_info_def["stype"] = flags_type_list[custom_type["type"]]["stype"]
+					custom_type["type_info_str"] = "ks_info_%u" % add_type(type_info_def)
 		if "include" in config:
 			include_list = config["include"]
 		else:
@@ -122,15 +136,23 @@ def generate_code(infile, outname):
 					type_info_def["struct"] = "ks_template__" + var_info["type"]
 				elif var_info["type"] in type_custom_list:
 					# custom type
-					custom_type = type_custom_list[var_info["type"]]
-					type_info_def = {}
-					type_info_def["ctype"] = custom_type["type"]
-					if "parser" in custom_type:
-						type_info_def["parser"] = custom_type["parser"]
-					if "exporter" in custom_type:
-						type_info_def["exporter"] = custom_type["exporter"]
-					type_info_def["stype"] = type_custom_base["stype"]
-					type_info_def["ktype"] = type_custom_base["ktype"]
+					if "flags" in type_custom_list[var_info["type"]]:
+						# custom bit field
+						type_info_def = dict(type_flags_base)
+						type_info_def["ctype"] = custom_type["type"]
+						type_info_def["size"] = "sizeof(%s)" % custom_type["type"]
+						type_info_def["struct"] = "ks_flags__" + var_info["type"]
+					else:
+						# custom type with C callbacks
+						custom_type = type_custom_list[var_info["type"]]
+						type_info_def = {}
+						type_info_def["ctype"] = custom_type["type"]
+						if "parser" in custom_type:
+							type_info_def["parser"] = custom_type["parser"]
+						if "exporter" in custom_type:
+							type_info_def["exporter"] = custom_type["exporter"]
+						type_info_def["stype"] = type_custom_base["stype"]
+						type_info_def["ktype"] = type_custom_base["ktype"]
 				else:
 					# invalid type
 					raise Exception("Unknown type name '%s' for '%s' in '%s'." % (var_info["type"], var_name, struct_name))
@@ -163,13 +185,22 @@ def generate_code(infile, outname):
 	# export all defs
 	for def_name in defs:
 		output.write("#define %s\t%u\n" % (def_name, defs[def_name]))
-	# export all custom parsers
+	# export all custom types
 	for custom_name in type_custom_list:
-		custom_info = type_custom_list[custom_name]
-		if "parser" in custom_info:
-			output.write("uint32_t %s(void *, const uint8_t *, uint32_t);\n" % custom_info["parser"])
-		if "exporter" in custom_info:
-			output.write("uint32_t %s(void *, uint8_t *);\n" % custom_info["exporter"])
+		custom_type = type_custom_list[custom_name]
+		# modifiable flags
+		if "flags" in custom_type:
+			# custom bit field
+			if type(custom_type["flags"]) is bool:
+				output.write("extern struct ks_base_template_s ks_flags__%s;\n" % custom_name)
+			else:
+				output.write("extern const struct ks_base_template_s ks_flags__%s;\n" % custom_name)
+		else:
+			# custom type with C callbacks
+			if "parser" in custom_type:
+				output.write("uint32_t %s(void *, const uint8_t *, uint32_t);\n" % custom_type["parser"])
+			if "exporter" in custom_type:
+				output.write("uint32_t %s(void *, uint8_t *);\n" % custom_type["exporter"])
 	# export all structures
 	for struct_name in struct_list:
 		struct = struct_list[struct_name]
@@ -233,7 +264,7 @@ def generate_code(infile, outname):
 		output.write("#include \"%s\"\n" % value)
 	output.write("#include \"kgstruct.h\"\n")
 	output.write("#include \"%s.h\"\n" % outname)
-	output.write("// KGSTRUCT AUTO GENERATED FILE\n")
+	output.write("// KGSTRUCT AUTO GENERATED FILE\n\n")
 	# generate types
 	idx = 0
 	for type_info in export_types:
@@ -258,6 +289,32 @@ def generate_code(infile, outname):
 		output.write("#endif\n")
 		output.write("};\n")
 		idx += 1
+	# extra newline
+	output.write("\n")
+	# generate custom flags
+	for custom_name in type_custom_list:
+		custom_type = type_custom_list[custom_name]
+		if "flags" in custom_type:
+			if type(custom_type["flags"]) is bool:
+				# modifiable names
+				output.write("ks_base_template_t ks_flags__%s =\n{\n" % custom_name)
+				output.write("\t.template =\n\t{\n")
+				for bit in range(flags_type_list[custom_type["type"]]["count"]):
+					output.write("\t\t{\n")
+					output.write("\t\t\t.info = (kgstruct_type_t*)&%s,\n" % custom_type["type_info_str"])
+					output.write("\t\t\t.flag_bits = %u,\n" % (1 << bit))
+					output.write("\t\t},\n")
+			else:
+				# static names
+				output.write("const ks_base_template_t ks_flags__%s =\n{\n" % custom_name)
+				output.write("\t.template =\n\t{\n")
+				for flag_bits in custom_type["flags"]:
+					output.write("\t\t{\n")
+					output.write("\t\t\t.key = \"%s\",\n" % flag_bits)
+					output.write("\t\t\t.info = (kgstruct_type_t*)&%s,\n" % custom_type["type_info_str"])
+					output.write("\t\t\t.flag_bits = %u,\n" % custom_type["flags"][flag_bits])
+					output.write("\t\t},\n")
+			output.write("\t\t{}\n\t}\n};\n")
 	# extra newline
 	output.write("\n")
 	# generate templates

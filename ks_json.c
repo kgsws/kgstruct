@@ -331,6 +331,9 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 				ks->state = 1;
 			break;
 			case KS_TYPEDEF_STRUCT:
+#ifdef KGSTRUCT_ENABLE_FLAGS
+			case KS_TYPEDEF_FLAGS:
+#endif
 				if(ks->recursion[ks->depth].step)
 					ks->export_step = export_object_entry;
 				else
@@ -339,15 +342,43 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 				ks->recursion[ks->depth].template = ks->recursion[ks->depth-1].template->info->object.basetemp->template;
 				ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].template->offset;
 				ks->recursion[ks->depth].step = 0;
-	#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KGSTRUCT_FILLINFO_TYPE
 				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].template->fill_offs;
 				ks->recursion[ks->depth].fill_step = 0;
 				ks->recursion[ks->depth].fill_idx = 0;
-	#endif
+#endif
 			return buff;
 			case KS_TYPEDEF_CUSTOM:
 				ks->state = ks->recursion[ks->depth].template->info->custom.export(value, ks->ptr);
 			break;
+#ifdef KGSTRUCT_ENABLE_FLAGS
+			case KS_TYPEDEF_FLAG8:
+				if(value->u8 & ks->recursion[ks->depth].template->flag_bits)
+					strcpy(ks->str, "true");
+				else
+					strcpy(ks->str, "false");
+			break;
+			case KS_TYPEDEF_FLAG16:
+				if(value->u16 & ks->recursion[ks->depth].template->flag_bits)
+					strcpy(ks->str, "true");
+				else
+					strcpy(ks->str, "false");
+			break;
+			case KS_TYPEDEF_FLAG32:
+				if(value->u32 & ks->recursion[ks->depth].template->flag_bits)
+					strcpy(ks->str, "true");
+				else
+					strcpy(ks->str, "false");
+			break;
+#ifdef KGSTRUCT_ENABLE_US64
+			case KS_TYPEDEF_FLAG64:
+				if(value->u64 & ks->recursion[ks->depth].template->flag_bits)
+					strcpy(ks->str, "true");
+				else
+					strcpy(ks->str, "false");
+			break;
+#endif
+#endif
 			default:
 				ks->ptr = "ERROR";
 				ks->state = 1;
@@ -587,6 +618,8 @@ void update_fillinfo(kgstruct_json_t *ks, uint32_t depth, uint32_t what)
 		return;
 	if(ks->fill_idx < 0)
 		return;
+	if(ks->recursion[depth].fill_offset == 0xFFFFFFFF)
+		return;
 #ifdef KS_JSON_DEBUG
 	printf("FILLINFO: base offs %u; offs %u; what %u\n", ks->recursion[depth].fill_offset, ks->fill_idx, what);
 #endif
@@ -805,15 +838,24 @@ continue_val_string:
 				goto finished;
 			}
 			// check for type match
-			if(ks->element && ks->element->info->base.type == KS_TYPEDEF_STRUCT)
-			{
+			if(	ks->element && (
+				ks->element->info->base.type == KS_TYPEDEF_STRUCT
+#ifdef KGSTRUCT_ENABLE_FLAGS
+				|| ks->element->info->base.type == KS_TYPEDEF_FLAGS
+#endif
+			)) {
 				ks->recursion[ks->depth].template = ks->element->info->object.basetemp->template;
 				ks->recursion[ks->depth].offset = offset + ks->element->offset;
 #ifdef KS_JSON_DEBUG
 				printf("object; depth %u; offset %u\n\n", ks->depth, ks->recursion[ks->depth].offset);
 #endif
 #ifdef KGSTRUCT_FILLINFO_TYPE
-				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->element->fill_offs + ks->recursion[ks->depth-1].fill_step;
+#ifdef KGSTRUCT_ENABLE_FLAGS
+				if(ks->element->info->base.type == KS_TYPEDEF_FLAGS)
+					ks->recursion[ks->depth].fill_offset = 0xFFFFFFFF;
+				else
+#endif
+					ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->element->fill_offs + ks->recursion[ks->depth-1].fill_step;
 				ks->recursion[ks->depth].fill_step = 0;
 #endif
 			} else
@@ -944,6 +986,56 @@ continue_val_end:
 				was_parsed =
 #endif
 					ks->element->info->custom.parse(ks->data + offset, ks->str, ks->val_type == JTYPE_STRING);
+			} else
+#endif
+#ifdef KGSTRUCT_ENABLE_FLAGS
+			if(ks->element->info->base.type > KS_TYPEDEF_FLAGS)
+			{
+				if(ks->val_type == JTYPE_OTHER)
+				{
+					kgstruct_number_t *dst = ks->data + offset;
+
+					if(!strcmp((void*)ks->str, "true"))
+					{
+						switch(ks->element->info->base.type)
+						{
+							case KS_TYPEDEF_FLAG8:
+								dst->u8 |= ks->element->flag_bits;
+							break;
+							case KS_TYPEDEF_FLAG16:
+								dst->u16 |= ks->element->flag_bits;
+							break;
+							case KS_TYPEDEF_FLAG32:
+								dst->u32 |= ks->element->flag_bits;
+							break;
+#ifdef KGSTRUCT_ENABLE_US64
+							case KS_TYPEDEF_FLAG64:
+								dst->u64 |= ks->element->flag_bits;
+							break;
+#endif
+						}
+					} else
+					if(!strcmp((void*)ks->str, "false"))
+					{
+						switch(ks->element->info->base.type)
+						{
+							case KS_TYPEDEF_FLAG8:
+								dst->u8 &= ~ks->element->flag_bits;
+							break;
+							case KS_TYPEDEF_FLAG16:
+								dst->u16 &= ~ks->element->flag_bits;
+							break;
+							case KS_TYPEDEF_FLAG32:
+								dst->u32 &= ~ks->element->flag_bits;
+							break;
+#ifdef KGSTRUCT_ENABLE_US64
+							case KS_TYPEDEF_FLAG64:
+								dst->u64 &= ~ks->element->flag_bits;
+							break;
+#endif
+						}
+					}
+				}
 			} else
 #endif
 #ifndef KS_JSON_ALLOW_STRING_NUMBERS

@@ -1,5 +1,12 @@
 {
 	"custom_test": "ABCD",
+	"flag_test":
+	{
+		"bit1": true,
+		"bit3": true,
+		"bit5": true,
+		"bit7": true
+	},
 	"time_split": "16:20:33",
 	"time_mult": "20:16:44",
 	"pokus": "test",

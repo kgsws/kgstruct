@@ -19,6 +19,7 @@ static test_struct_tf test_fill;
 static void dump_struct(test_struct_t *in)
 {
 	printf("custom_test: 0x%08X\n", in->custom_test);
+	printf("flag_test: 0x%08X\n", in->flag_test);
 
 	printf("test_u8: %u\n", in->test_u8);
 	printf("test_u16: %u\n", in->test_u16);

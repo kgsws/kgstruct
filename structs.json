@@ -10,11 +10,26 @@
 		},
 		"types":
 		{
-			"custom":
+			"custom_type":
 			{
 				"type": "uint32_t",
 				"parser": "custom_value_parse",
 				"exporter": "custom_value_export"
+			},
+			"custom_flags":
+			{
+				"type": "uint32_t",
+				"flags":
+				{
+					"bit0": 1,
+					"bit1": 2,
+					"bit2": 4,
+					"bit3": 8,
+					"bit4": 16,
+					"bit5": 32,
+					"bit6": 64,
+					"bit7": 128
+				}
 			}
 		}
 	},
@@ -60,7 +75,8 @@
 			"test_limit2": {"type": "u32", "min": 666, "max": 777},
 			"test_limit3": {"type": "u32", "min": 666, "max": 777},
 			"meta_array": {"type": "meta_struct", "array": 4, "empty": true},
-			"custom_test": {"type": "custom"}
+			"custom_test": {"type": "custom_type"},
+			"flag_test": {"type": "custom_flags"}
 		}
 	}
 }

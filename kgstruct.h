@@ -36,12 +36,26 @@ enum
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	KS_TYPEDEF_DOUBLE,
 #endif
-	// non-value types (strings and stuff)
-	KS_TYPEDEF_STRING, // string has to be first
+	//// non-value types (strings and stuff)
+
+	// string has to be first
+	KS_TYPEDEF_STRING,
+
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 	KS_TYPEDEF_CUSTOM,
 #endif
 	KS_TYPEDEF_STRUCT,
+
+	// flags have to be last
+#ifdef KGSTRUCT_ENABLE_FLAGS
+	KS_TYPEDEF_FLAGS, // this is like 'KS_TYPEDEF_STRUCT'
+	KS_TYPEDEF_FLAG8,
+	KS_TYPEDEF_FLAG16,
+	KS_TYPEDEF_FLAG32,
+#ifdef KGSTRUCT_ENABLE_US64
+	KS_TYPEDEF_FLAG64,
+#endif
+#endif
 };
 #define KS_TYPE_LAST_NUMERIC	KS_TYPEDEF_STRING
 
@@ -234,8 +248,16 @@ typedef struct ks_template_s
 	uint8_t *key;
 	kgstruct_type_t *info;
 	uint32_t offset;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-	uint32_t fill_offs;
+#if defined(KGSTRUCT_FILLINFO_TYPE) || defined(KGSTRUCT_ENABLE_FLAGS)
+	union
+	{
+		uint32_t fill_offs;
+#if defined(KGSTRUCT_ENABLE_US64) && defined(KGSTRUCT_ENABLE_FLAGS)
+		uint64_t flag_bits;
+#else
+		uint32_t flag_bits;
+#endif
+	};
 #endif
 } ks_template_t;
 
