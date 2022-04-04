@@ -1,6 +1,6 @@
 
 // configuration
-#ifndef KGJSON_EXTERNAL_CONFIG
+#ifndef KGSTRUCT_EXTERNAL_CONFIG
 
 #define KS_JSON_MAX_STRING_LENGTH	64
 #define KS_JSON_MAX_DEPTH	32

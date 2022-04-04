@@ -1,7 +1,7 @@
 
 
 // configuration
-#ifndef KGJSON_EXTERNAL_CONFIG
+#ifndef KGSTRUCT_EXTERNAL_CONFIG
 
 #define KGSTRUCT_FILLINFO_TYPE	uint8_t // enable special 'fill info' structure
 #define KGSTRUCT_ENABLE_MINMAX	// enable limits on numbers
