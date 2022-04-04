@@ -1,5 +1,8 @@
 
+
 // configuration
+#ifndef KGJSON_EXTERNAL_CONFIG
+
 #define KGSTRUCT_FILLINFO_TYPE	uint8_t // enable special 'fill info' structure
 #define KGSTRUCT_ENABLE_MINMAX	// enable limits on numbers
 #define KGSTRUCT_ENABLE_US64	// enable uint64_t and int64_t
@@ -7,6 +10,8 @@
 #define KGSTRUCT_ENABLE_DOUBLE	// enable usage of 'double'
 #define KGSTRUCT_ENABLE_CUSTOM_TYPE	// enable custom types
 #define KGSTRUCT_ENABLE_FLAGS	// enable boolean flags
+
+#endif
 
 //
 // internal stuff

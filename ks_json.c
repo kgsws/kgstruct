@@ -971,8 +971,8 @@ continue_val_end:
 #endif
 				// check string length
 				uint32_t length = ks->ptr - ks->str;
-				if(length > ks->element->info->base.size)
-					 ks->str[ks->element->info->base.size] = 0;
+				if(length > ks->element->info->base.size-1)
+					 ks->str[ks->element->info->base.size-1] = 0;
 				// copy the string
 				strcpy((void*)ks->data + offset, (void*)ks->str);
 #ifdef KGSTRUCT_FILLINFO_TYPE

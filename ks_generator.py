@@ -405,9 +405,15 @@ def recursive_schema(structure_list, structure):
 					var_props["maximum"] = range_type["max"]
 				# optional custom range
 				if "min" in var_info:
-					var_props["minimum"] = var_info["min"]
+					if type(var_info["min"]) is str:
+						var_props["minimum"] = defs[var_info["min"]]
+					else:
+						var_props["minimum"] = var_info["min"]
 				if "max" in var_info:
-					var_props["maximum"] = var_info["max"]
+					if type(var_info["max"]) is str:
+						var_props["maximum"] = defs[var_info["max"]]
+					else:
+						var_props["maximum"] = var_info["max"]
 		else:
 			# object
 			var_type["type"] = "object"
