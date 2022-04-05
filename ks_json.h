@@ -2,13 +2,12 @@
 // configuration
 #ifndef KGSTRUCT_EXTERNAL_CONFIG
 
+#define KS_JSON_PARSER
+#define KS_JSON_EXPORTER
 #define KS_JSON_MAX_STRING_LENGTH	64
 #define KS_JSON_MAX_DEPTH	32
 //#define KS_JSON_LINE_COUNTER
 //#define KS_JSON_ALLOW_STRING_NUMBERS
-
-#define KS_JSON_PARSER
-#define KS_JSON_EXPORTER
 
 #endif
 

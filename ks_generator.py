@@ -260,6 +260,9 @@ def generate_code(infile, outname):
 	output = open("%s.c" % outname, "w")
 	output.write("#include <stdint.h>\n")
 	output.write("#include <stddef.h>\n")
+	output.write("#ifdef KGSTRUCT_EXTERNAL_CONFIG\n")
+	output.write("#include KGSTRUCT_EXTERNAL_CONFIG\n")
+	output.write("#endif\n")
 	for value in include_list:
 		output.write("#include \"%s\"\n" % value)
 	output.write("#include \"kgstruct.h\"\n")

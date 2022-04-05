@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
+#ifdef KGSTRUCT_EXTERNAL_CONFIG
+#include KGSTRUCT_EXTERNAL_CONFIG
+#endif
 #include "kgstruct.h"
 #include "ks_json.h"
 
