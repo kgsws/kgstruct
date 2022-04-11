@@ -78,7 +78,7 @@ static void dump_struct(test_struct_t *in)
 		printf(" meta_array[%u].sub %u\n", i, test_fill.__meta_array[i].sub);
 }
 
-uint32_t custom_value_parse(void *dst, const uint8_t *text, uint32_t is_string)
+uint32_t custom_value_parse(void *dst, uint8_t *text, uint32_t is_string)
 {
 	// example of custom parser
 	// copy ASCII characters to uint32_t

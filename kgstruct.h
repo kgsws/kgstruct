@@ -118,7 +118,7 @@ typedef struct
 typedef struct
 {
 	kgstruct_base_t base;
-	uint32_t (*parse)(void *dst, const uint8_t *text, uint32_t is_string);
+	uint32_t (*parse)(void *dst, uint8_t *text, uint32_t is_string);
 	uint32_t (*export)(void *src, uint8_t *text);
 } kgstruct_custom_t;
 #endif

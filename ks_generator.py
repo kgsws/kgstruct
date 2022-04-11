@@ -198,7 +198,7 @@ def generate_code(infile, outname):
 		else:
 			# custom type with C callbacks
 			if "parser" in custom_type:
-				output.write("uint32_t %s(void *, const uint8_t *, uint32_t);\n" % custom_type["parser"])
+				output.write("uint32_t %s(void *, uint8_t *, uint32_t);\n" % custom_type["parser"])
 			if "exporter" in custom_type:
 				output.write("uint32_t %s(void *, uint8_t *);\n" % custom_type["exporter"])
 	# export all structures
