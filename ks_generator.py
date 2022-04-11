@@ -138,6 +138,7 @@ def generate_code(infile, outname):
 					# custom type
 					if "flags" in type_custom_list[var_info["type"]]:
 						# custom bit field
+						custom_type = type_custom_list[var_info["type"]]
 						type_info_def = dict(type_flags_base)
 						type_info_def["ctype"] = custom_type["type"]
 						type_info_def["size"] = "sizeof(%s)" % custom_type["type"]
