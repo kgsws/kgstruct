@@ -154,6 +154,7 @@ def generate_code(infile, outname):
 							type_info_def["exporter"] = custom_type["exporter"]
 						type_info_def["stype"] = type_custom_base["stype"]
 						type_info_def["ktype"] = type_custom_base["ktype"]
+						type_info_def["size"] = "sizeof(%s)" % custom_type["type"]
 				else:
 					# invalid type
 					raise Exception("Unknown type name '%s' for '%s' in '%s'." % (var_info["type"], var_name, struct_name))
