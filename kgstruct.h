@@ -119,7 +119,7 @@ typedef struct
 {
 	kgstruct_base_t base;
 	uint32_t (*parse)(void *dst, uint8_t *text, uint32_t is_string);
-	uint32_t (*export)(void *src, uint8_t *text);
+	uint32_t (*exprt)(void *src, uint8_t *text);
 } kgstruct_custom_t;
 #endif
 
@@ -269,6 +269,6 @@ typedef struct ks_template_s
 typedef struct ks_base_template_s
 {
 	uint32_t fill_size;
-	ks_template_t template[];
+	ks_template_t tmpl[];
 } ks_base_template_t;
 

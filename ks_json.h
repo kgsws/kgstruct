@@ -31,7 +31,7 @@ enum
 
 typedef struct
 {
-	const ks_template_t *template;
+	const ks_template_t *tmpl;
 	uint32_t offset;
 	uint32_t step;
 	uint32_t limit;

@@ -105,8 +105,8 @@ static uint8_t *export_next_key(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end
 #ifdef KGSTRUCT_FILLINFO_TYPE
 	ks->recursion[ks->depth].fill_idx++;
 #endif
-	ks->recursion[ks->depth].template++;
-	if(!ks->recursion[ks->depth].template->key)
+	ks->recursion[ks->depth].tmpl++;
+	if(!ks->recursion[ks->depth].tmpl->key)
 	{
 		if(ks->readable)
 		{
@@ -135,8 +135,8 @@ static uint8_t *export_array_next_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_t
 static uint8_t *export_array_next(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
 #ifdef KGSTRUCT_FILLINFO_TYPE
-	if(ks->recursion[ks->depth].template->info->base.type == KS_TYPEDEF_STRUCT)
-		ks->recursion[ks->depth].fill_offset += ks->recursion[ks->depth].template->info->object.basetemp->fill_size;
+	if(ks->recursion[ks->depth].tmpl->info->base.type == KS_TYPEDEF_STRUCT)
+		ks->recursion[ks->depth].fill_offset += ks->recursion[ks->depth].tmpl->info->object.basetemp->fill_size;
 #endif
 	*buff++ = ',';
 	ks->export_step = export_array_next_nl;
@@ -243,14 +243,14 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 	ks->state = 0;
 	ks->ptr = ks->str;
 
-	value = ks->data + ks->recursion[ks->depth].offset + ks->recursion[ks->depth].template->offset;
+	value = ks->data + ks->recursion[ks->depth].offset + ks->recursion[ks->depth].tmpl->offset;
 
-	if(	ks->recursion[ks->depth].template->info->base.flags & KS_TYPEFLAG_IS_BOOL &&
-		ks->recursion[ks->depth].template->info->base.type < KS_TYPEDEF_STRING
+	if(	ks->recursion[ks->depth].tmpl->info->base.flags & KS_TYPEFLAG_IS_BOOL &&
+		ks->recursion[ks->depth].tmpl->info->base.type < KS_TYPEDEF_STRING
 	){
 		kgstruct_number_t val;
 		val.uread = 0;
-		switch(ks->recursion[ks->depth].template->info->base.type)
+		switch(ks->recursion[ks->depth].tmpl->info->base.type)
 		{
 			case KS_TYPEDEF_U8:
 			case KS_TYPEDEF_S8:
@@ -283,7 +283,7 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 			strcpy(ks->str, "false");
 	} else
 	{
-		switch(ks->recursion[ks->depth].template->info->base.type)
+		switch(ks->recursion[ks->depth].tmpl->info->base.type)
 		{
 			case KS_TYPEDEF_U8:
 				sprintf(ks->str, "%u", value->u8);
@@ -342,40 +342,40 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 				else
 					ks->export_step = export_object_entry_nl;
 				ks->depth++;
-				ks->recursion[ks->depth].template = ks->recursion[ks->depth-1].template->info->object.basetemp->template;
-				ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].template->offset;
+				ks->recursion[ks->depth].tmpl = ks->recursion[ks->depth-1].tmpl->info->object.basetemp->tmpl;
+				ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].tmpl->offset;
 				ks->recursion[ks->depth].step = 0;
 #ifdef KGSTRUCT_FILLINFO_TYPE
-				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].template->fill_offs;
+				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].tmpl->fill_offs;
 				ks->recursion[ks->depth].fill_step = 0;
 				ks->recursion[ks->depth].fill_idx = 0;
 #endif
 			return buff;
 			case KS_TYPEDEF_CUSTOM:
-				ks->state = ks->recursion[ks->depth].template->info->custom.export(value, ks->ptr);
+				ks->state = ks->recursion[ks->depth].tmpl->info->custom.exprt(value, ks->ptr);
 			break;
 #ifdef KGSTRUCT_ENABLE_FLAGS
 			case KS_TYPEDEF_FLAG8:
-				if(value->u8 & ks->recursion[ks->depth].template->flag_bits)
+				if(value->u8 & ks->recursion[ks->depth].tmpl->flag_bits)
 					strcpy(ks->str, "true");
 				else
 					strcpy(ks->str, "false");
 			break;
 			case KS_TYPEDEF_FLAG16:
-				if(value->u16 & ks->recursion[ks->depth].template->flag_bits)
+				if(value->u16 & ks->recursion[ks->depth].tmpl->flag_bits)
 					strcpy(ks->str, "true");
 				else
 					strcpy(ks->str, "false");
 			break;
 			case KS_TYPEDEF_FLAG32:
-				if(value->u32 & ks->recursion[ks->depth].template->flag_bits)
+				if(value->u32 & ks->recursion[ks->depth].tmpl->flag_bits)
 					strcpy(ks->str, "true");
 				else
 					strcpy(ks->str, "false");
 			break;
 #ifdef KGSTRUCT_ENABLE_US64
 			case KS_TYPEDEF_FLAG64:
-				if(value->u64 & ks->recursion[ks->depth].template->flag_bits)
+				if(value->u64 & ks->recursion[ks->depth].tmpl->flag_bits)
 					strcpy(ks->str, "true");
 				else
 					strcpy(ks->str, "false");
@@ -422,13 +422,13 @@ static uint8_t *export_array_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 
 static uint8_t *export_key_separator_or_array(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-	if(ks->recursion[ks->depth].template->info->base.array)
+	if(ks->recursion[ks->depth].tmpl->info->base.array)
 	{
-		const ks_template_t *element = ks->recursion[ks->depth].template;
+		const ks_template_t *element = ks->recursion[ks->depth].tmpl;
 		ks->depth++;
-		ks->recursion[ks->depth].template = element;
+		ks->recursion[ks->depth].tmpl = element;
 		ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset;
-		ks->recursion[ks->depth].limit = ks->recursion[ks->depth].template->info->base.array;
+		ks->recursion[ks->depth].limit = ks->recursion[ks->depth].tmpl->info->base.array;
 #ifdef KGSTRUCT_FILLINFO_TYPE
 		ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset;
 		ks->recursion[ks->depth].fill_step = 0;
@@ -456,7 +456,7 @@ static uint8_t *export_key_separator_or_array(kgstruct_json_t *ks, uint8_t *buff
 		return buff;
 	}
 
-	if(ks->readable && ks->recursion[ks->depth].template->info->base.type != KS_TYPEDEF_STRUCT)
+	if(ks->readable && ks->recursion[ks->depth].tmpl->info->base.type != KS_TYPEDEF_STRUCT)
 		*buff++ = ' ';
 	ks->export_step = export_value_start;
 
@@ -493,7 +493,7 @@ static uint8_t *export_key_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *en
 {
 	*buff++ = '"';
 	ks->export_step = export_key;
-	ks->ptr = ks->recursion[ks->depth].template->key;
+	ks->ptr = ks->recursion[ks->depth].tmpl->key;
 	return buff;
 }
 
@@ -740,19 +740,19 @@ continue_key_string:
 #ifdef KGSTRUCT_FILLINFO_TYPE
 		ks->fill_idx = -1;
 #endif
-		if(ks->recursion[ks->depth].template)
+		if(ks->recursion[ks->depth].tmpl)
 		{
-			const ks_template_t *elm = ks->recursion[ks->depth].template;
+			const ks_template_t *elm = ks->recursion[ks->depth].tmpl;
 			while(elm->info)
 			{
 				if(!strcmp((void*)elm->key, (void*)ks->str))
 				{
 #ifdef KS_JSON_DEBUG
-					printf("** found match for key at %u **\n", (uint32_t)(elm - ks->recursion[ks->depth].template));
+					printf("** found match for key at %u **\n", (uint32_t)(elm - ks->recursion[ks->depth].tmpl));
 #endif
 					ks->element = elm;
 #ifdef KGSTRUCT_FILLINFO_TYPE
-					ks->fill_idx = (uint32_t)(elm - ks->recursion[ks->depth].template);
+					ks->fill_idx = (uint32_t)(elm - ks->recursion[ks->depth].tmpl);
 					update_fillinfo(ks, ks->depth, 0);
 #endif
 					break;
@@ -797,7 +797,7 @@ continue_val_in_object:
 		if(ks->recursion[ks->depth].offset >= ks->recursion[ks->depth].limit)
 		{
 			ks->element = NULL;
-			ks->recursion[ks->depth].template = NULL;
+			ks->recursion[ks->depth].tmpl = NULL;
 #ifdef KGSTRUCT_FILLINFO_TYPE
 			ks->fill_idx = -1;
 #endif
@@ -847,7 +847,7 @@ continue_val_string:
 				|| ks->element->info->base.type == KS_TYPEDEF_FLAGS
 #endif
 			)) {
-				ks->recursion[ks->depth].template = ks->element->info->object.basetemp->template;
+				ks->recursion[ks->depth].tmpl = ks->element->info->object.basetemp->tmpl;
 				ks->recursion[ks->depth].offset = offset + ks->element->offset;
 #ifdef KS_JSON_DEBUG
 				printf("object; depth %u; offset %u\n\n", ks->depth, ks->recursion[ks->depth].offset);
@@ -863,7 +863,7 @@ continue_val_string:
 #endif
 			} else
 			{
-				ks->recursion[ks->depth].template = dummy_object;
+				ks->recursion[ks->depth].tmpl = dummy_object;
 #ifdef KS_JSON_DEBUG
 				printf("object; depth %u; UNKNOWN\n\n", ks->depth);
 #endif
@@ -891,7 +891,7 @@ continue_val_string:
 			// check for type match
 			if(ks->element)
 			{
-				ks->recursion[ks->depth].template = ks->element;
+				ks->recursion[ks->depth].tmpl = ks->element;
 				if(ks->element->info->base.type < KS_TYPE_LAST_NUMERIC)
 					ks->recursion[ks->depth].step = kgstruct_type_size[ks->element->info->base.type];
 				else
@@ -905,7 +905,7 @@ continue_val_string:
 #endif
 			} else
 			{
-				ks->recursion[ks->depth].template = dummy_object;
+				ks->recursion[ks->depth].tmpl = dummy_object;
 				ks->recursion[ks->depth].step = 1;
 				ks->recursion[ks->depth].limit = 0;
 				ks->element = NULL;
@@ -1533,7 +1533,7 @@ continue_val_end:
 #ifdef KGSTRUCT_FILLINFO_TYPE
 		if(ks->array == ']')
 		{
-			const ks_template_t *element = ks->recursion[ks->depth].template;
+			const ks_template_t *element = ks->recursion[ks->depth].tmpl;
 			if(element && element->info && element->info->base.type == KS_TYPEDEF_STRUCT)
 				ks->recursion[ks->depth].fill_step += element->info->object.basetemp->fill_size;
 		}
@@ -1558,7 +1558,7 @@ skip_empty_object:
 			if(ks->recursion[ks->depth].step)
 			{
 				ks->array = ']';
-				ks->element = ks->recursion[ks->depth].template;
+				ks->element = ks->recursion[ks->depth].tmpl;
 #ifdef KGSTRUCT_FILLINFO_TYPE
 				ks->fill_idx = ks->recursion[ks->depth].fill_idx;
 				if(ks->element && ks->element->info && ks->element->info->base.type == KS_TYPEDEF_STRUCT)
@@ -1631,7 +1631,7 @@ void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void 
 	ks->recursion[0].fill_step = 0;
 	ks->recursion[0].fill_idx = 0;
 #endif
-	ks->recursion[0].template = basetemp->template;
+	ks->recursion[0].tmpl = basetemp->tmpl;
 	ks->recursion[0].offset = 0;
 	ks->recursion[0].step = 0;
 	ks->recursion[0].limit = 0xFFFFFFFF;

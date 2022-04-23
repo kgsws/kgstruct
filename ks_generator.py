@@ -285,7 +285,7 @@ def generate_code(infile, outname):
 		if "parser" in type_info:
 			output.write("\t.parse = %s,\n" % type_info["parser"])
 		if "exporter" in type_info:
-			output.write("\t.export = %s,\n" % type_info["exporter"])
+			output.write("\t.exprt = %s,\n" % type_info["exporter"])
 		output.write("#ifdef KGSTRUCT_ENABLE_MINMAX\n")
 		if "min" in type_info:
 			output.write("\t.min = %s,\n" % type_info["min"])
@@ -303,7 +303,7 @@ def generate_code(infile, outname):
 			if type(custom_type["flags"]) is bool:
 				# modifiable names
 				output.write("ks_base_template_t ks_flags__%s =\n{\n" % custom_name)
-				output.write("\t.template =\n\t{\n")
+				output.write("\t.tmpl =\n\t{\n")
 				for bit in range(flags_type_list[custom_type["type"]]["count"]):
 					output.write("\t\t{\n")
 					output.write("\t\t\t.info = (kgstruct_type_t*)&%s,\n" % custom_type["type_info_str"])
@@ -312,7 +312,7 @@ def generate_code(infile, outname):
 			else:
 				# static names
 				output.write("const ks_base_template_t ks_flags__%s =\n{\n" % custom_name)
-				output.write("\t.template =\n\t{\n")
+				output.write("\t.tmpl =\n\t{\n")
 				for flag_bits in custom_type["flags"]:
 					output.write("\t\t{\n")
 					output.write("\t\t\t.key = \"%s\",\n" % flag_bits)
@@ -332,7 +332,7 @@ def generate_code(infile, outname):
 			output.write("\t.fill_size = sizeof(%s_tf),\n" % struct_name)
 			output.write("#endif\n")
 		# export all (visible) variables
-		output.write("\t.template =\n\t{\n")
+		output.write("\t.tmpl =\n\t{\n")
 		for var_name in struct:
 			var_info = struct[var_name]
 			if "type_info_str" in var_info:
