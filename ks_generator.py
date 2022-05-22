@@ -515,6 +515,7 @@ def generate_schema(infile, outfile, exportname):
 
 	# parse requested structure
 	schema["properties"] = recursive_schema(structures, structures[exportname])
+	schema["required"] = list(schema["properties"].keys())
 
 	# write file
 	with open(outfile, "w") as f:

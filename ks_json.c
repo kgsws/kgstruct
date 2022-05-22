@@ -269,13 +269,15 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 			break;
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 			case KS_TYPEDEF_DOUBLE:
+				val.f64 = value->f64;
+			break;
 #endif
 #ifdef KGSTRUCT_ENABLE_US64
 			case KS_TYPEDEF_U64:
 			case KS_TYPEDEF_S64:
-#endif
 				val.u64 = value->u64;
 			break;
+#endif
 		}
 		if(val.uread)
 			strcpy(ks->str, "true");
