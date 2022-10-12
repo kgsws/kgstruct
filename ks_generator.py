@@ -454,7 +454,10 @@ def recursive_schema(structure_list, structure):
 				arr_size = var_info["array"]
 			var_type["maxItems"] = arr_size
 			if not "empty" in var_info or not var_info["empty"]:
-				var_type["minItems"] = arr_size
+				if "min" in var_info:
+					var_type["minItems"] = var_info["min"]
+				else:
+					var_type["minItems"] = arr_size
 			# change type
 			arr_items["type"] = var_type["type"]
 			var_type["type"] = "array"

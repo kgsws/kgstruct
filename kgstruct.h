@@ -224,7 +224,9 @@ typedef union
 {
 	kgstruct_base_t base;
 	kgstruct_base_only_t base_only;
+#ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 	kgstruct_custom_t custom;
+#endif
 	kgstruct_string_t string;
 	kgstruct_object_t object;
 	kgstruct_s8_t s8;
