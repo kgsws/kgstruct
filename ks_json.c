@@ -102,7 +102,7 @@ static uint8_t *export_object_close(kgstruct_json_t *ks, uint8_t *buff, uint8_t 
 
 static uint8_t *export_next_key(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 	ks->recursion[ks->depth].fill_idx++;
 #endif
 	ks->recursion[ks->depth].tmpl++;
@@ -134,7 +134,7 @@ static uint8_t *export_array_next_nl(kgstruct_json_t *ks, uint8_t *buff, uint8_t
 
 static uint8_t *export_array_next(kgstruct_json_t *ks, uint8_t *buff, uint8_t *end)
 {
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 	if(ks->recursion[ks->depth].tmpl->info->base.type == KS_TYPEDEF_STRUCT)
 		ks->recursion[ks->depth].fill_offset += ks->recursion[ks->depth].tmpl->info->object.basetemp->fill_size;
 #endif
@@ -347,15 +347,17 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 				ks->recursion[ks->depth].tmpl = ks->recursion[ks->depth-1].tmpl->info->object.basetemp->tmpl;
 				ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset + ks->recursion[ks->depth-1].tmpl->offset;
 				ks->recursion[ks->depth].step = 0;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset + ks->recursion[ks->depth-1].tmpl->fill_offs;
 				ks->recursion[ks->depth].fill_step = 0;
 				ks->recursion[ks->depth].fill_idx = 0;
 #endif
 			return buff;
+#ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 			case KS_TYPEDEF_CUSTOM:
 				ks->state = ks->recursion[ks->depth].tmpl->info->custom.exprt(value, ks->ptr);
 			break;
+#endif
 #ifdef KGSTRUCT_ENABLE_FLAGS
 			case KS_TYPEDEF_FLAG8:
 				if(value->u8 & ks->recursion[ks->depth].tmpl->flag_bits)
@@ -431,7 +433,7 @@ static uint8_t *export_key_separator_or_array(kgstruct_json_t *ks, uint8_t *buff
 		ks->recursion[ks->depth].tmpl = element;
 		ks->recursion[ks->depth].offset = ks->recursion[ks->depth-1].offset;
 		ks->recursion[ks->depth].limit = ks->recursion[ks->depth].tmpl->info->base.array;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 		ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset;
 		ks->recursion[ks->depth].fill_step = 0;
 		ks->recursion[ks->depth].fill_idx = ks->recursion[ks->depth-1].fill_idx;
@@ -495,7 +497,7 @@ static uint8_t *export_key_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *en
 {
 	*buff++ = '"';
 	ks->export_step = export_key;
-	ks->ptr = ks->recursion[ks->depth].tmpl->key;
+	ks->ptr = (uint8_t*)ks->recursion[ks->depth].tmpl->key;
 	return buff;
 }
 
@@ -616,7 +618,7 @@ static uint8_t *get_unsigned(uint8_t *str, uint32_t *dst)
 
 #ifdef KS_JSON_PARSER
 
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 void update_fillinfo(kgstruct_json_t *ks, uint32_t depth, uint32_t what)
 {
 	if(!ks->fillinfo)
@@ -640,7 +642,7 @@ void update_fillinfo(kgstruct_json_t *ks, uint32_t depth, uint32_t what)
 int ks_json_parse(kgstruct_json_t *ks, const uint8_t *buff, uint32_t length)
 {
 	const uint8_t *end = buff + length;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 	uint_fast8_t was_parsed;
 #endif
 
@@ -739,7 +741,7 @@ continue_key_string:
 #endif
 		// find this key in the template
 		ks->element = NULL;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 		ks->fill_idx = -1;
 #endif
 		if(ks->recursion[ks->depth].tmpl)
@@ -753,7 +755,7 @@ continue_key_string:
 					printf("** found match for key at %u **\n", (uint32_t)(elm - ks->recursion[ks->depth].tmpl));
 #endif
 					ks->element = elm;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 					ks->fill_idx = (uint32_t)(elm - ks->recursion[ks->depth].tmpl);
 					update_fillinfo(ks, ks->depth, 0);
 #endif
@@ -800,7 +802,7 @@ continue_val_in_object:
 		{
 			ks->element = NULL;
 			ks->recursion[ks->depth].tmpl = NULL;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 			ks->fill_idx = -1;
 #endif
 		}
@@ -833,7 +835,7 @@ continue_val_string:
 			// prepare object
 			buff++;
 			ks->array = '}';
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 			update_fillinfo(ks, ks->depth, 1);
 #endif
 			ks->depth++;
@@ -854,7 +856,7 @@ continue_val_string:
 #ifdef KS_JSON_DEBUG
 				printf("object; depth %u; offset %u\n\n", ks->depth, ks->recursion[ks->depth].offset);
 #endif
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 #ifdef KGSTRUCT_ENABLE_FLAGS
 				if(ks->element->info->base.type == KS_TYPEDEF_FLAGS)
 					ks->recursion[ks->depth].fill_offset = 0xFFFFFFFF;
@@ -873,7 +875,7 @@ continue_val_string:
 			ks->recursion[ks->depth].step = 0;
 			ks->recursion[ks->depth].limit = 0xFFFFFFFF;
 			ks->element = NULL;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 			ks->fill_idx = -1;
 #endif
 			goto continue_key_in_object;
@@ -900,7 +902,7 @@ continue_val_string:
 					ks->recursion[ks->depth].step = ks->element->info->base.size;
 				ks->recursion[ks->depth].offset = offset - ks->recursion[ks->depth].step;
 				ks->recursion[ks->depth].limit = offset + ks->recursion[ks->depth].step * ks->element->info->base.array;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 				ks->recursion[ks->depth].fill_step = 0;
 				ks->recursion[ks->depth].fill_offset = ks->recursion[ks->depth-1].fill_offset;
 				ks->recursion[ks->depth].fill_idx = ks->fill_idx;
@@ -911,7 +913,7 @@ continue_val_string:
 				ks->recursion[ks->depth].step = 1;
 				ks->recursion[ks->depth].limit = 0;
 				ks->element = NULL;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 				ks->fill_idx = -1;
 #endif
 			}
@@ -965,7 +967,7 @@ continue_val_end:
 #ifdef KS_JSON_DEBUG
 			printf("assign; offset %u; type %u; jtype %u\n", offset, ks->element->info->base.type, ks->val_type);
 #endif
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 			was_parsed = 0;
 #endif
 			if(ks->element->info->base.type == KS_TYPEDEF_STRING)
@@ -980,14 +982,14 @@ continue_val_end:
 					 ks->str[ks->element->info->base.size-1] = 0;
 				// copy the string
 				strcpy((void*)ks->data + offset, (void*)ks->str);
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 				was_parsed = 1;
 #endif
 			} else
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 			if(ks->element->info->base.type == KS_TYPEDEF_CUSTOM)
 			{
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 				was_parsed =
 #endif
 					ks->element->info->custom.parse(ks->data + offset, ks->str, ks->val_type == JTYPE_STRING);
@@ -1085,306 +1087,14 @@ continue_val_end:
 				{
 					switch(ks->element->info->base.type)
 					{
-						// 8 bits
-						case KS_TYPEDEF_U8:
-							if(neg_bad)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.uread < ks->element->info->u8.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u8.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.uread > ks->element->info->u8.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u8.max;
-								}
-							} else
-#endif
-							if(val.uread > 0xFF)
-								break;
-							dst->u8 = val.u8;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						case KS_TYPEDEF_S8:
-							if(neg_bad)
-							{
-								if(val.uread > KGSTRUCT_NUMBER_SMAX)
-									break;
-								val.sread = -val.sread;
-							}
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.sread < ks->element->info->s8.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s8.min;
-								}
-							} else
-#endif
-							if(val.sread < -0x80)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.sread > ks->element->info->s8.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s8.max;
-								}
-							} else
-#endif
-							if(val.sread > 0x7F)
-								break;
-							dst->s8 = val.s8;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						// 16 bits
-						case KS_TYPEDEF_U16:
-							if(neg_bad)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.uread < ks->element->info->u16.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u16.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.uread > ks->element->info->u16.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u16.max;
-								}
-
-							} else
-#endif
-							if(val.uread > 0xFFFF)
-								break;
-							dst->u16 = val.u16;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						case KS_TYPEDEF_S16:
-							if(neg_bad)
-							{
-								if(val.uread > KGSTRUCT_NUMBER_SMAX)
-									break;
-								val.sread = -val.sread;
-							}
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.sread < ks->element->info->s16.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s16.min;
-								}
-							} else
-#endif
-							if(val.sread < -0x8000)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.sread > ks->element->info->s16.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s16.max;
-								}
-							} else
-#endif
-							if(val.sread > 0x7FFF)
-								break;
-							dst->s16 = val.s16;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						// 32 bits
-						case KS_TYPEDEF_U32:
-							if(neg_bad)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.uread < ks->element->info->u32.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u32.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.uread > ks->element->info->u32.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u32.max;
-								}
-							} else
-#endif
-							if(val.uread > 0xFFFFFFFF)
-								break;
-							dst->u32 = val.u32;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						case KS_TYPEDEF_S32:
-							if(neg_bad)
-							{
-								if(val.uread > KGSTRUCT_NUMBER_SMAX)
-									break;
-								val.sread = -val.sread;
-							}
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.sread < ks->element->info->s32.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s32.min;
-								}
-							} else
-#endif
-							if(val.sread < -0x80000000L)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.sread > ks->element->info->s32.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s32.max;
-								}
-							} else
-#endif
-							if(val.sread > 0x7FFFFFFF)
-								break;
-							dst->s32 = val.s32;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						// 64 bits
-#ifdef KGSTRUCT_ENABLE_US64
-						case KS_TYPEDEF_U64:
-							if(neg_bad)
-								break;
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.uread < ks->element->info->u64.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u64.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.uread > ks->element->info->u64.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.uread = ks->element->info->u64.max;
-								}
-							}
-#endif
-							dst->u64 = val.u64;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-						case KS_TYPEDEF_S64:
-							if(neg_bad)
-							{
-								if(val.uread > KGSTRUCT_NUMBER_SMAX)
-									break;
-								val.sread = -val.sread;
-							}
-#ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(val.sread < ks->element->info->s64.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s64.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(val.sread > ks->element->info->s64.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-										break;
-									else
-										val.sread = ks->element->info->s64.max;
-								}
-							}
-#endif
-							dst->s64 = val.s64;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
-						break;
-#endif
-						// float
 #ifdef KGSTRUCT_ENABLE_FLOAT
 						case KS_TYPEDEF_FLOAT:
 						{
-							float old = dst->f32;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
 							if(neg_bad)
-								val.sread = -val.sread;
+								val.f32 = -val.sread;
+							else
+								val.f32 = val.sread;
 
-							dst->f32 = val.sread;
-							// decimal part
 							if(*ptr == '.')
 							{
 								float dec = 0;
@@ -1409,57 +1119,29 @@ continue_val_end:
 									dec /= 10;
 								}
 								if(neg_bad)
-									dec = -dec;
-								dst->f32 += dec;
+									val.f32 -= dec;
+								else
+									val.f32 += dec;
 							}
 #ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(dst->f32 < ks->element->info->f32.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-									{
-										dst->f32 = old;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-										was_parsed = 0;
+#ifdef KS_JSON_ENABLE_FILLINFO
+							was_parsed =
 #endif
-										break;
-									} else
-										dst->f32 = ks->element->info->f32.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(dst->f32 > ks->element->info->f32.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-									{
-										dst->f32 = old;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-										was_parsed = 0;
-#endif
-										break;
-									} else
-										dst->f32 = ks->element->info->f32.max;
-								}
-							}
+								kgstruct_handle_value(dst, val, ks->element->info, 0);
+#else
+							dst->f32 = val->f32;
 #endif
 						}
 						break;
 #endif
-						// double
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 						case KS_TYPEDEF_DOUBLE:
 						{
-							double old = dst->f64;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-							was_parsed = 1;
-#endif
 							if(neg_bad)
-								val.sread = -val.sread;
+								val.f64 = -val.sread;
+							else
+								val.f64 = val.sread;
 
-							dst->f64 = val.sread;
-							// decimal part
 							if(*ptr == '.')
 							{
 								double dec = 0;
@@ -1484,55 +1166,39 @@ continue_val_end:
 									dec /= 10;
 								}
 								if(neg_bad)
-									dec = -dec;
-								dst->f64 += dec;
+									val.f64 -= dec;
+								else
+									val.f64 += dec;
 							}
 #ifdef KGSTRUCT_ENABLE_MINMAX
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MIN)
-							{
-								if(dst->f64 < ks->element->info->f64.min)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-									{
-										dst->f64 = old;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-										was_parsed = 0;
+#ifdef KS_JSON_ENABLE_FILLINFO
+							was_parsed =
 #endif
-										break;
-									} else
-										dst->f64 = ks->element->info->f64.min;
-								}
-							}
-							if(ks->element->info->base.flags & KS_TYPEFLAG_HAS_MAX)
-							{
-								if(dst->f64 > ks->element->info->f64.max)
-								{
-									if(ks->element->info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
-									{
-										dst->f64 = old;
-#ifdef KGSTRUCT_FILLINFO_TYPE
-										was_parsed = 0;
-#endif
-										break;
-									} else
-										dst->f64 = ks->element->info->f64.max;
-								}
-							}
+								kgstruct_handle_value(dst, val, ks->element->info, 0);
+#else
+							dst->f64 = val->f64;
 #endif
 						}
 						break;
 #endif
+						default:
+#ifdef KS_JSON_ENABLE_FILLINFO
+							was_parsed =
+#endif
+								kgstruct_handle_value(dst, val, ks->element->info, neg_bad);
+						break;
 					}
+
 				}
 			}
 
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 			if(was_parsed || ks->array == ']')
 				update_fillinfo(ks, ks->depth, 1);
 #endif
 		}
 
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 		if(ks->array == ']')
 		{
 			const ks_template_t *element = ks->recursion[ks->depth].tmpl;
@@ -1561,7 +1227,7 @@ skip_empty_object:
 			{
 				ks->array = ']';
 				ks->element = ks->recursion[ks->depth].tmpl;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 				ks->fill_idx = ks->recursion[ks->depth].fill_idx;
 				if(ks->element && ks->element->info && ks->element->info->base.type == KS_TYPEDEF_STRUCT)
 					ks->recursion[ks->depth].fill_step += ks->element->info->object.basetemp->fill_size;
@@ -1624,10 +1290,14 @@ uint32_t ks_json_export(kgstruct_json_t *ks, uint8_t *buff, uint32_t length)
 }
 #endif
 
+#ifdef KS_JSON_ENABLE_FILLINFO
 void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void *buffer, void *fillinfo)
+#else
+void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void *buffer)
+#endif
 {
 	ks->data = buffer;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 	ks->fillinfo = fillinfo;
 	ks->recursion[0].fill_offset = 0;
 	ks->recursion[0].fill_step = 0;

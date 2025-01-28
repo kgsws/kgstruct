@@ -9,14 +9,16 @@
 #endif
 #include "kgstruct.h"
 #include "ks_json.h"
+#include "ks_cbor.h"
 #include "structs.h" // generated file
 
-static kgstruct_json_t ks;
+static kgstruct_json_t ks_j;
+static kgstruct_cbor_t ks_c;
 static uint8_t buffer[16 * 1024];
 static int size;
 static int fd;
 
-static test_struct_t test_struct[2];
+static test_struct_t test_struct[4];
 static test_struct_tf test_fill;
 
 static void dump_struct(test_struct_t *in)
@@ -37,6 +39,7 @@ static void dump_struct(test_struct_t *in)
 	printf("test_bool: %d\n", in->test_bool);
 
 	printf("test_float: %f\n", in->test_float);
+	printf("test_double: %lf\n", in->test_double);
 
 	printf("test_text: %s\n", in->test_text);
 
@@ -113,16 +116,16 @@ int main(int argc, char **argv)
 	// BEWARE!
 	// This is only a test code, there are no overflow checks.
 
-	if(argc < 2)
-	{
-		printf("usage: %s test.json\n", argv[0]);
-		return 1;
-	}
+	//
+	// JSON
+	//
 
-	fd = open(argv[1], O_RDONLY);
+	printf("\n+------+\n| JSON |\n+------+\n\n");
+
+	fd = open("example.json", O_RDONLY);
 	if(fd < 0)
 	{
-		printf("can't open input file\n");
+		printf("can't open JSON file\n");
 		return 1;
 	}
 
@@ -134,44 +137,48 @@ int main(int argc, char **argv)
 
 	// check full
 	printf("== FULL ==========\n");
-	ks_json_init(&ks, &ks_template__test_struct, test_struct + 0, &test_fill);
-	ret = ks_json_parse(&ks, buffer, size);
-	printf("ret: %u\n", ret);
+	ks_json_init(&ks_j, &ks_template__test_struct, test_struct + 0, &test_fill);
+	ret = ks_json_parse(&ks_j, buffer, size);
+	printf("ret: %u\n\n", ret);
 
 	// check stepped
-	printf("\n== STEP ==========\n");
-	ks_json_init(&ks, &ks_template__test_struct, test_struct + 1, NULL);
+	printf("== STEP ==========\n");
+	ks_json_init(&ks_j, &ks_template__test_struct, test_struct + 1, NULL);
 	for(uint32_t i = 0; i < size; i++)
-		if(ks_json_parse(&ks, buffer + i, 1) != KS_JSON_MORE_DATA)
+	{
+		ret = ks_json_parse(&ks_j, buffer + i, 1);
+		if(ret != KS_JSON_MORE_DATA)
 			break;
+	}
+	printf("ret: %u\n\n", ret);
 
-	printf("FULL\n");
+	printf("-= FULL =-\n");
 	dump_struct(test_struct + 0);
-	printf("STEP\n");
+	printf("-= STEP =-\n");
 	dump_struct(test_struct + 1);
 
 	if(memcmp(test_struct + 0, test_struct + 1, sizeof(test_struct_t)))
-		printf("*MISMATCH*\n");
+		printf("****** MISMATCH ******\n");
 	else
-		printf("*MATCH*\n");
+		printf("****** MATCH ******\n");
 
 	//
 	// EXPORT
 	memset(buffer, 0, sizeof(buffer));
 
 	// check full
-	ks_json_init(&ks, &ks_template__test_struct, test_struct + 0, NULL);
-ks.escaped = 1; // readable
-	ret = ks_json_export(&ks, buffer, sizeof(buffer) / 2);
+	ks_json_init(&ks_j, &ks_template__test_struct, test_struct + 0, NULL);
+ks_j.readable = 1; // optional
+	ret = ks_json_export(&ks_j, buffer, sizeof(buffer) / 2);
 	printf("export length: %u\n", ret);
 
 	// check stepped
-	ks_json_init(&ks, &ks_template__test_struct, test_struct + 0, NULL);
-ks.escaped = 1; // readable
+	ks_json_init(&ks_j, &ks_template__test_struct, test_struct + 0, NULL);
+ks_j.readable = 1; // optional
 	ptr = buffer + sizeof(buffer) / 2;
 	while(1)
 	{
-		if(!ks_json_export(&ks, ptr, 1))
+		if(!ks_json_export(&ks_j, ptr, 1))
 			break;
 		ptr++;
 	}
@@ -180,9 +187,60 @@ ks.escaped = 1; // readable
 	printf("==== OUTPUT ====\n%s\n================\n", buffer);
 
 	if(strcmp(buffer, buffer + sizeof(buffer) / 2))
-		printf("*MISMATCH*\n");
+		printf("****** MISMATCH ******\n");
 	else
-		printf("*MATCH*\n");
+		printf("****** MATCH ******\n");
+
+	//
+	// CBOR
+	//
+
+	printf("\n+------+\n| CBOR |\n+------+\n\n");
+
+	fd = open("example.cbor", O_RDONLY);
+	if(fd < 0)
+	{
+		printf("can't open CBOR file\n");
+		return 1;
+	}
+
+	size = read(fd, buffer, sizeof(buffer));
+	close(fd);
+
+	//
+	// IMPORT
+
+	// check full
+	printf("== FULL ==========\n");
+	ks_cbor_init(&ks_c, &ks_template__test_struct, test_struct + 2);
+	ret = ks_cbor_parse(&ks_c, buffer, size);
+	printf("ret: %u\n\n", ret);
+
+	// check stepped
+	printf("== STEP ==========\n");
+	ks_cbor_init(&ks_c, &ks_template__test_struct, test_struct + 3);
+	for(uint32_t i = 0; i < size; i++)
+	{
+		ret = ks_cbor_parse(&ks_c, buffer + i, 1);
+		if(ret != KS_CBOR_MORE_DATA)
+			break;
+	}
+	printf("ret: %u\n\n", ret);
+
+	printf("-= FULL =-\n");
+	dump_struct(test_struct + 2);
+	printf("-= STEP =-\n");
+	dump_struct(test_struct + 3);
+
+	if(memcmp(test_struct + 2, test_struct + 3, sizeof(test_struct_t)))
+		printf("****** MISMATCH ******\n");
+	else
+		printf("****** MATCH ******\n");
+
+	//
+	// EXPORT
+	memset(buffer, 0, sizeof(buffer));
+
 
 	return 0;
 }

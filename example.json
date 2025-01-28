@@ -28,7 +28,8 @@
 		"value_u16": 44332,
 		"value_u8": 91,
 		"value_u32": 91919191,
-		"meta": {
+		"meta":
+		{
 			"meta_u32": 12344321,
 			"meta_s32": -43211234
 		}
@@ -38,7 +39,8 @@
 		"value_u16": 54433,
 		"value_u8": 222,
 		"value_u32": 222222222,
-		"meta": {
+		"meta":
+		{
 			"meta_u32": 5432345,
 			"meta_s32": -456543
 		}
@@ -52,7 +54,8 @@
 	{
 		"custom name": 44444,
 		"test": [5, false, 77.7, true, {"a": "b"}, "xyz"],
-		"pokus": {
+		"pokus":
+		{
 			"array": [0, 1, [2, 3, 4, [5]]],
 			"true": false
 		},

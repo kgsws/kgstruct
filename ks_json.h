@@ -5,9 +5,10 @@
 #define KS_JSON_PARSER
 #define KS_JSON_EXPORTER
 #define KS_JSON_MAX_STRING_LENGTH	64
-#define KS_JSON_MAX_DEPTH	32
+#define KS_JSON_MAX_DEPTH	16
 //#define KS_JSON_LINE_COUNTER
 //#define KS_JSON_ALLOW_STRING_NUMBERS
+#define KS_JSON_ENABLE_FILLINFO
 
 #endif
 
@@ -35,7 +36,7 @@ typedef struct
 	uint32_t offset;
 	uint32_t step;
 	uint32_t limit;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 	uint32_t fill_offset;
 	uint32_t fill_step;
 	uint32_t fill_idx;
@@ -58,11 +59,11 @@ typedef struct kgstruct_json_s
 	uint16_t line;
 #endif
 	void *data;
-#ifdef KGSTRUCT_FILLINFO_TYPE
+#ifdef KS_JSON_ENABLE_FILLINFO
 	void *fillinfo;
 	int32_t fill_idx;
 #endif
-#ifdef KS_JSON_PARSER
+#ifdef KS_JSON_MAX_STRING_LENGTH
 	uint8_t str[KS_JSON_MAX_STRING_LENGTH];
 #endif
 #ifdef KS_JSON_EXPORTER
@@ -79,5 +80,8 @@ int ks_json_parse(kgstruct_json_t *ks, const uint8_t *buff, uint32_t length);
 #ifdef KS_JSON_EXPORTER
 uint32_t ks_json_export(kgstruct_json_t *ks, uint8_t *buff, uint32_t length);
 #endif
+#ifdef KS_JSON_ENABLE_FILLINFO
 void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void *buffer, void *fillinfo);
-
+#else
+void ks_json_init(kgstruct_json_t *ks, const ks_base_template_t *basetemp, void *buffer);
+#endif

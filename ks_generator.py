@@ -16,6 +16,7 @@ type_info_list = {
 	"f64": {"ctype": "double", "stype": "KS_TYPEDEF_DOUBLE", "ktype": "kgstruct_double_t"}
 }
 type_padding = {"ctype": "uint8_t"}
+type_c_binary = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_BINARY", "ktype": "kgstruct_binary_t"}
 type_c_string = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_STRING", "ktype": "kgstruct_string_t"}
 type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
 type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
@@ -118,6 +119,11 @@ def generate_code(infile, outname):
 				type_info_def = dict(type_c_string)
 				type_info_def["size"] = str(var_info["length"])
 				var_template["string"] = str(var_info["length"])
+			elif var_info["type"] == "binary":
+				# special case for binary data
+				type_info_def = dict(type_c_binary)
+				type_info_def["size"] = str(var_info["length"])
+				var_template["string"] = str(var_info["length"])
 			elif var_info["type"] in type_info_list:
 				type_info_def = dict(type_info_list[var_info["type"]])
 				# min / max
@@ -127,6 +133,7 @@ def generate_code(infile, outname):
 				if "max" in var_info:
 					var_flags += "|" + type_has_max
 					type_info_def["max"] = str(var_info["max"])
+				type_info_def["size"] = "sizeof(%s)" % type_info_def["ctype"]
 			else:
 				if var_info["type"] in struct_list:
 					# structure-in-structure
@@ -316,6 +323,7 @@ def generate_code(infile, outname):
 				for flag_bits in custom_type["flags"]:
 					output.write("\t\t{\n")
 					output.write("\t\t\t.key = \"%s\",\n" % flag_bits)
+					output.write("\t\t\t.kln = %u,\n" % len(flag_bits))
 					output.write("\t\t\t.info = (kgstruct_type_t*)&%s,\n" % custom_type["type_info_str"])
 					output.write("\t\t\t.flag_bits = %u,\n" % custom_type["flags"][flag_bits])
 					output.write("\t\t},\n")
@@ -338,7 +346,8 @@ def generate_code(infile, outname):
 			if "type_info_str" in var_info:
 				output.write("\t\t{\n")
 				output.write("\t\t\t.key = \"%s\",\n" % var_info["name"])
-				output.write("\t\t\t.info = (kgstruct_type_t*)&%s,\n" % var_info["type_info_str"])
+				output.write("\t\t\t.kln = %u,\n" % len(var_info["name"]))
+				output.write("\t\t\t.info = (const kgstruct_type_t*)&%s,\n" % var_info["type_info_str"])
 				output.write("\t\t\t.offset = offsetof(%s_t,%s),\n" % (struct_name, var_name))
 				if enable_fill_info and var_info["stype"] == type_c_struct["stype"]:
 					output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")

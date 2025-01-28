@@ -1,6 +1,6 @@
 program = test
 KSOBJ = structs.o
-OBJ = main.o ks_json.o
+OBJ = main.o kgstruct.o ks_json.o ks_cbor.o
 LIBS = 
 DEFS = -DKGSTRUCT_EXTERNAL_CONFIG=\"ks_config.h\"
 OPT= -O2 -g

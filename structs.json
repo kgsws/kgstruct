@@ -65,6 +65,7 @@
 			"test_s64": {"type": "s64"},
 			"test_bool": {"type": "u8"},
 			"test_float": {"type": "f32"},
+			"test_double": {"type": "f64"},
 			"inside": {"type": "inside_struct"},
 			"test_text": {"type": "string", "length": 32},
 			"insidE": {"type": "inside_struct"},
@@ -80,4 +81,5 @@
 		}
 	}
 }
+
 

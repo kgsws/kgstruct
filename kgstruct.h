@@ -3,7 +3,7 @@
 // configuration
 #ifndef KGSTRUCT_EXTERNAL_CONFIG
 
-#define KGSTRUCT_FILLINFO_TYPE	uint8_t // enable special 'fill info' structure
+#define KGSTRUCT_FILLINFO_TYPE	uint8_t // enable special 'fill info' structure; NOTE: individual parser has it's own enable too
 #define KGSTRUCT_ENABLE_MINMAX	// enable limits on numbers
 #define KGSTRUCT_ENABLE_US64	// enable uint64_t and int64_t
 #define KGSTRUCT_ENABLE_FLOAT	// enable usage of 'float'
@@ -18,8 +18,12 @@
 #define KGSTRUCT_DECIMAL_ENABLED	(defined(KGSTRUCT_ENABLE_FLOAT) || defined(KGSTRUCT_ENABLE_DOUBLE))
 #ifdef KGSTRUCT_ENABLE_US64
 #define KGSTRUCT_NUMBER_SMAX	0x7FFFFFFFFFFFFFFFL
+typedef uint64_t kgstruct_uint_t;
+typedef int64_t kgstruct_int_t;
 #else
 #define KGSTRUCT_NUMBER_SMAX	0x7FFFFFFF
+typedef uint32_t kgstruct_uint_t;
+typedef int32_t kgstruct_int_t;
 #endif
 
 // types
@@ -35,23 +39,24 @@ enum
 	KS_TYPEDEF_U64,
 	KS_TYPEDEF_S64,
 #endif
+	//// floating point types
 #ifdef KGSTRUCT_ENABLE_FLOAT
 	KS_TYPEDEF_FLOAT,
 #endif
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	KS_TYPEDEF_DOUBLE,
 #endif
-	//// non-value types (strings and stuff)
+	//// non-value types
 
-	// string has to be first
 	KS_TYPEDEF_STRING,
+	KS_TYPEDEF_BINARY,
 
 #ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 	KS_TYPEDEF_CUSTOM,
 #endif
 	KS_TYPEDEF_STRUCT,
 
-	// flags have to be last
+	//// flags
 #ifdef KGSTRUCT_ENABLE_FLAGS
 	KS_TYPEDEF_FLAGS, // this is like 'KS_TYPEDEF_STRUCT'
 	KS_TYPEDEF_FLAG8,
@@ -62,7 +67,14 @@ enum
 #endif
 #endif
 };
+
 #define KS_TYPE_LAST_NUMERIC	KS_TYPEDEF_STRING
+
+#ifdef KGSTRUCT_ENABLE_US64
+#define KS_TYPE_LAST_INTEGER	KS_TYPEDEF_S64+1
+#else
+#define KS_TYPE_LAST_INTEGER	KS_TYPEDEF_S32+1
+#endif
 
 // flags
 #define KS_TYPEFLAG_HAS_MIN	1
@@ -96,6 +108,11 @@ typedef union
 #ifdef KGSTRUCT_ENABLE_DOUBLE
 	double f64;
 #endif
+#if defined(KGSTRUCT_ENABLE_US64) || defined(KGSTRUCT_ENABLE_DOUBLE)
+	uint8_t raw[8];
+#else
+	uint8_t raw[4];
+#endif
 } kgstruct_number_t;
 
 //
@@ -127,6 +144,11 @@ typedef struct
 {
 	kgstruct_base_t base;
 } kgstruct_string_t;
+
+typedef struct
+{
+	kgstruct_base_t base;
+} kgstruct_binary_t;
 
 typedef struct
 {
@@ -228,6 +250,7 @@ typedef union
 	kgstruct_custom_t custom;
 #endif
 	kgstruct_string_t string;
+	kgstruct_binary_t binary;
 	kgstruct_object_t object;
 	kgstruct_s8_t s8;
 	kgstruct_u8_t u8;
@@ -252,8 +275,9 @@ typedef union
 
 typedef struct ks_template_s
 {
-	uint8_t *key;
-	kgstruct_type_t *info;
+	const uint8_t *key;
+	uint32_t kln;
+	const kgstruct_type_t *info;
 	uint32_t offset;
 #if defined(KGSTRUCT_FILLINFO_TYPE) || defined(KGSTRUCT_ENABLE_FLAGS)
 	union
@@ -274,3 +298,6 @@ typedef struct ks_base_template_s
 	ks_template_t tmpl[];
 } ks_base_template_t;
 
+//
+
+int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const kgstruct_type_t *info, uint32_t is_neg);
