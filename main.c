@@ -110,7 +110,7 @@ uint32_t custom_value_export(void *src, uint8_t *text)
 
 int main(int argc, char **argv)
 {
-	int ret;
+	int ret, idx;
 	uint8_t *ptr;
 
 	// BEWARE!
@@ -212,16 +212,16 @@ ks_j.readable = 1; // optional
 
 	// check full
 	printf("== FULL ==========\n");
-	ks_cbor_init(&ks_c, &ks_template__test_struct, test_struct + 2);
-	ret = ks_cbor_parse(&ks_c, buffer, size);
+	ks_cbor_init_import(&ks_c, &ks_template__test_struct, test_struct + 2);
+	ret = ks_cbor_feed(&ks_c, buffer, size);
 	printf("ret: %u\n\n", ret);
 
 	// check stepped
 	printf("== STEP ==========\n");
-	ks_cbor_init(&ks_c, &ks_template__test_struct, test_struct + 3);
+	ks_cbor_init_import(&ks_c, &ks_template__test_struct, test_struct + 3);
 	for(uint32_t i = 0; i < size; i++)
 	{
-		ret = ks_cbor_parse(&ks_c, buffer + i, 1);
+		ret = ks_cbor_feed(&ks_c, buffer + i, 1);
 		if(ret != KS_CBOR_MORE_DATA)
 			break;
 	}
@@ -241,7 +241,33 @@ ks_j.readable = 1; // optional
 	// EXPORT
 	memset(buffer, 0, sizeof(buffer));
 
+	// check full
+	ks_cbor_init_export(&ks_c, &ks_template__test_struct, test_struct + 2);
+	ret = ks_cbor_feed(&ks_c, buffer + sizeof(buffer) / 2, sizeof(buffer) / 2);
+	printf("export length: %u\n", ret);
 
+	// check stepped
+	ks_cbor_init_export(&ks_c, &ks_template__test_struct, test_struct + 2);
+
+	idx = 0;
+	do
+	{
+		ret = ks_cbor_feed(&ks_c, buffer + idx, 1);
+		idx += ret;
+	} while(ret == 1);
+	printf("export length: %u\n", idx);
+
+	if(memcmp(buffer, buffer + sizeof(buffer) / 2, sizeof(buffer) / 2))
+		printf("****** MISMATCH ******\n");
+	else
+		printf("****** MATCH ******\n");
+
+#if 0
+	// TEST SAVE
+	int fd = open("/tmp/test.cbor", O_WRONLY | O_TRUNC | O_CREAT, 0644);
+	write(fd, buffer, ret);
+	close(fd);
+#endif
 	return 0;
 }
 

@@ -96,11 +96,11 @@ typedef union
 #ifdef KGSTRUCT_ENABLE_US64
 	uint64_t u64;
 	int64_t s64;
-	uint64_t uread;
-	int64_t sread;
+	uint64_t uval;
+	int64_t sval;
 #else
-	uint32_t uread;
-	int32_t sread;
+	uint32_t uval;
+	int32_t sval;
 #endif
 #ifdef KGSTRUCT_ENABLE_FLOAT
 	float f32;
@@ -294,7 +294,10 @@ typedef struct ks_template_s
 
 typedef struct ks_base_template_s
 {
+	uint32_t count;
+#ifdef KGSTRUCT_FILLINFO_TYPE
 	uint32_t fill_size;
+#endif
 	ks_template_t tmpl[];
 } ks_base_template_t;
 

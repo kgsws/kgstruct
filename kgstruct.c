@@ -14,7 +14,7 @@
 int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const kgstruct_type_t *info, uint32_t is_neg)
 {
 	if(is_neg)
-		val.sread = -val.sread;
+		val.sval = -val.sval;
 
 	switch(info->base.type)
 	{
@@ -23,7 +23,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(is_neg || val.uread < (kgstruct_uint_t)info->u8.min)
+				if(is_neg || val.uval < (kgstruct_uint_t)info->u8.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -41,7 +41,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.uread > (kgstruct_uint_t)info->u8.max)
+				if(val.uval > (kgstruct_uint_t)info->u8.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -49,7 +49,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.uread > 255)
+			if(val.uval > 255)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -63,7 +63,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sread < (kgstruct_uint_t)info->s8.min)
+				if(val.sval < (kgstruct_uint_t)info->s8.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -71,7 +71,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread < -128)
+			if(val.sval < -128)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -81,7 +81,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sread > (kgstruct_uint_t)info->s8.max)
+				if(val.sval > (kgstruct_uint_t)info->s8.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -89,7 +89,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread > 127)
+			if(val.sval > 127)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -104,7 +104,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(is_neg || val.uread < (kgstruct_uint_t)info->u16.min)
+				if(is_neg || val.uval < (kgstruct_uint_t)info->u16.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -122,7 +122,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.uread > (kgstruct_uint_t)info->u16.max)
+				if(val.uval > (kgstruct_uint_t)info->u16.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -130,7 +130,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.uread > 65535)
+			if(val.uval > 65535)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -144,7 +144,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sread < (kgstruct_uint_t)info->s16.min)
+				if(val.sval < (kgstruct_uint_t)info->s16.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -152,7 +152,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread < -32768)
+			if(val.sval < -32768)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -162,7 +162,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sread > (kgstruct_uint_t)info->s16.max)
+				if(val.sval > (kgstruct_uint_t)info->s16.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -170,7 +170,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread > 32767)
+			if(val.sval > 32767)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -185,7 +185,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(is_neg || val.uread < (kgstruct_uint_t)info->u32.min)
+				if(is_neg || val.uval < (kgstruct_uint_t)info->u32.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -203,7 +203,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.uread > (kgstruct_uint_t)info->u32.max)
+				if(val.uval > (kgstruct_uint_t)info->u32.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -211,7 +211,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.uread > 4294967295)
+			if(val.uval > 4294967295)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -225,7 +225,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sread < (kgstruct_uint_t)info->s32.min)
+				if(val.sval < (kgstruct_uint_t)info->s32.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -233,7 +233,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread < -2147483648)
+			if(val.sval < -2147483648)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -243,7 +243,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sread > (kgstruct_uint_t)info->s32.max)
+				if(val.sval > (kgstruct_uint_t)info->s32.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -251,7 +251,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread > 2147483647)
+			if(val.sval > 2147483647)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -267,7 +267,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(is_neg || val.uread < (kgstruct_uint_t)info->u64.min)
+				if(is_neg || val.uval < (kgstruct_uint_t)info->u64.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -285,7 +285,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.uread > (kgstruct_uint_t)info->u64.max)
+				if(val.uval > (kgstruct_uint_t)info->u64.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -293,7 +293,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.uread > 18446744073709551615UL)
+			if(val.uval > 18446744073709551615UL)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -307,7 +307,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sread < (kgstruct_uint_t)info->s64.min)
+				if(val.sval < (kgstruct_uint_t)info->s64.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -315,7 +315,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread < -9223372036854775807L) // 9223372036854775808L causes warning
+			if(val.sval < -9223372036854775807L) // 9223372036854775808L causes warning
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;
@@ -325,7 +325,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sread > (kgstruct_uint_t)info->s64.max)
+				if(val.sval > (kgstruct_uint_t)info->s64.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -333,7 +333,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					return 1;
 				}
 			} else
-			if(val.sread > 9223372036854775807L)
+			if(val.sval > 9223372036854775807L)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 					return 0;

@@ -249,7 +249,7 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 		ks->recursion[ks->depth].tmpl->info->base.type < KS_TYPEDEF_STRING
 	){
 		kgstruct_number_t val;
-		val.uread = 0;
+		val.uval = 0;
 		switch(ks->recursion[ks->depth].tmpl->info->base.type)
 		{
 			case KS_TYPEDEF_U8:
@@ -279,7 +279,7 @@ static uint8_t *export_value_start(kgstruct_json_t *ks, uint8_t *buff, uint8_t *
 			break;
 #endif
 		}
-		if(val.uread)
+		if(val.uval)
 			strcpy(ks->str, "true");
 		else
 			strcpy(ks->str, "false");
@@ -1059,12 +1059,12 @@ continue_val_end:
 				// boolean check
 				if(!strcmp((void*)ks->str, "true"))
 				{
-					val.uread = 1;
+					val.uval = 1;
 					neg_bad = 0;
 				} else
 				if(!strcmp((void*)ks->str, "false"))
 				{
-					val.uread = 0;
+					val.uval = 0;
 					neg_bad = 0;
 				} else
 				{
@@ -1078,7 +1078,7 @@ continue_val_end:
 					} else
 						neg_bad = 0;
 
-					ptr = get_unsigned(ptr, &val.uread);
+					ptr = get_unsigned(ptr, &val.uval);
 					if(!ptr)
 						neg_bad = -1;
 				}
@@ -1091,9 +1091,9 @@ continue_val_end:
 						case KS_TYPEDEF_FLOAT:
 						{
 							if(neg_bad)
-								val.f32 = -val.sread;
+								val.f32 = -val.sval;
 							else
-								val.f32 = val.sread;
+								val.f32 = val.sval;
 
 							if(*ptr == '.')
 							{
@@ -1138,9 +1138,9 @@ continue_val_end:
 						case KS_TYPEDEF_DOUBLE:
 						{
 							if(neg_bad)
-								val.f64 = -val.sread;
+								val.f64 = -val.sval;
 							else
-								val.f64 = val.sread;
+								val.f64 = val.sval;
 
 							if(*ptr == '.')
 							{

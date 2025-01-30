@@ -319,6 +319,7 @@ def generate_code(infile, outname):
 			else:
 				# static names
 				output.write("const ks_base_template_t ks_flags__%s =\n{\n" % custom_name)
+				output.write("\t.count = %u,\n" % len(custom_type["flags"]))
 				output.write("\t.tmpl =\n\t{\n")
 				for flag_bits in custom_type["flags"]:
 					output.write("\t\t{\n")
@@ -339,6 +340,8 @@ def generate_code(infile, outname):
 			output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
 			output.write("\t.fill_size = sizeof(%s_tf),\n" % struct_name)
 			output.write("#endif\n")
+		# element count
+		output.write("\t.count = %u,\n" % len(struct))
 		# export all (visible) variables
 		output.write("\t.tmpl =\n\t{\n")
 		for var_name in struct:
