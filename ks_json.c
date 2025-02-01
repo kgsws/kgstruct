@@ -1053,7 +1053,7 @@ continue_val_end:
 				printf("* value\n");
 #endif
 				int neg_bad; // -1 = bad; 0 = positive; 1 = negative
-				uint8_t *ptr;
+				uint8_t *ptr = ks->str;
 				kgstruct_number_t val;
 				kgstruct_number_t *dst = ks->data + offset;
 				// boolean check
@@ -1069,8 +1069,6 @@ continue_val_end:
 				} else
 				{
 					// normal number
-					ptr = ks->str;
-
 					if(*ptr == '-')
 					{
 						neg_bad = 1;

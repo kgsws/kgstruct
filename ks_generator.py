@@ -21,7 +21,7 @@ type_c_string = {"ctype": "uint8_t", "stype": "KS_TYPEDEF_STRING", "ktype": "kgs
 type_c_struct = {"stype": "KS_TYPEDEF_STRUCT", "ktype": "kgstruct_object_t"}
 type_custom_base = {"stype": "KS_TYPEDEF_CUSTOM", "ktype": "kgstruct_custom_t"}
 type_flags_base = {"stype": "KS_TYPEDEF_FLAGS", "ktype": "kgstruct_object_t"}
-type_flag_single = {"ktype": "kgstruct_custom_t", "flags": "0"}
+type_flag_single = {"ktype": "kgstruct_base_only_t", "flags": "0"}
 
 flags_type_list = {
 	"uint8_t": {"stype": "KS_TYPEDEF_FLAG8", "count": 8},

@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 	// check stepped
 	printf("== STEP ==========\n");
 	ks_json_init(&ks_j, &ks_template__test_struct, test_struct + 1, NULL);
-	for(uint32_t i = 0; i < size; i++)
+	for(int32_t i = 0; i < size; i++)
 	{
 		ret = ks_json_parse(&ks_j, buffer + i, 1);
 		if(ret != KS_JSON_MORE_DATA)
@@ -219,7 +219,7 @@ ks_j.readable = 1; // optional
 	// check stepped
 	printf("== STEP ==========\n");
 	ks_cbor_init_import(&ks_c, &ks_template__test_struct, test_struct + 3);
-	for(uint32_t i = 0; i < size; i++)
+	for(int32_t i = 0; i < size; i++)
 	{
 		ret = ks_cbor_feed(&ks_c, buffer + i, 1);
 		if(ret != KS_CBOR_MORE_DATA)

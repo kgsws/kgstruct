@@ -63,7 +63,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sval < (kgstruct_uint_t)info->s8.min)
+				if(val.sval < (kgstruct_int_t)info->s8.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -81,7 +81,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sval > (kgstruct_uint_t)info->s8.max)
+				if(val.sval > (kgstruct_int_t)info->s8.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -144,7 +144,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sval < (kgstruct_uint_t)info->s16.min)
+				if(val.sval < (kgstruct_int_t)info->s16.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -162,7 +162,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sval > (kgstruct_uint_t)info->s16.max)
+				if(val.sval > (kgstruct_int_t)info->s16.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -210,7 +210,9 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 					dst->u32 = info->u32.max;
 					return 1;
 				}
-			} else
+			}
+#ifdef KGSTRUCT_ENABLE_US64
+			else
 			if(val.uval > 4294967295)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
@@ -219,20 +221,23 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 				return 1;
 			}
 #endif
+#endif
 			dst->u32 = val.u32;
 			return 1;
 		case KS_TYPEDEF_S32:
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sval < (kgstruct_uint_t)info->s32.min)
+				if(val.sval < (kgstruct_int_t)info->s32.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
 					dst->s32 = info->s32.min;
 					return 1;
 				}
-			} else
+			}
+#ifdef KGSTRUCT_ENABLE_US64
+			else
 			if(val.sval < -2147483648)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
@@ -240,17 +245,19 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 				dst->s32 = -2147483648;
 				return 1;
 			}
-
+#endif
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sval > (kgstruct_uint_t)info->s32.max)
+				if(val.sval > (kgstruct_int_t)info->s32.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
 					dst->s32 = info->s32.max;
 					return 1;
 				}
-			} else
+			}
+#ifdef KGSTRUCT_ENABLE_US64
+			else
 			if(val.sval > 2147483647)
 			{
 				if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
@@ -258,6 +265,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 				dst->s32 = 2147483647;
 				return 1;
 			}
+#endif
 #endif
 			dst->s32 = val.s32;
 			return 1;
@@ -307,7 +315,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 #ifdef KGSTRUCT_ENABLE_MINMAX
 			if(info->base.flags & KS_TYPEFLAG_HAS_MIN)
 			{
-				if(val.sval < (kgstruct_uint_t)info->s64.min)
+				if(val.sval < (kgstruct_int_t)info->s64.min)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;
@@ -325,7 +333,7 @@ int kgstruct_handle_value(kgstruct_number_t *dst, kgstruct_number_t val, const k
 
 			if(info->base.flags & KS_TYPEFLAG_HAS_MAX)
 			{
-				if(val.sval > (kgstruct_uint_t)info->s64.max)
+				if(val.sval > (kgstruct_int_t)info->s64.max)
 				{
 					if(info->base.flags & KS_TYPEFLAG_IGNORE_LIMITED)
 						return 0;

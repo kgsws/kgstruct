@@ -199,6 +199,7 @@ static int manage_extended(kgstruct_cbor_t *ks, uint32_t type, kgstruct_number_t
 #endif
 		default:
 			type = CT_UNDEF;
+			__attribute__((fallthrough));
 		case CT_FALSE:
 		case CT_TRUE:
 			ks->byte_cnt = 0;
@@ -418,8 +419,10 @@ static const ks_template_t *find_key(kgstruct_cbor_t *ks)
 		if(	tmpl->kln == ks->key_len &&
 			!memcmp(tmpl->key, ks->key, ks->key_len)
 		){
+#ifdef KGSTRUCT_ENABLE_CUSTOM_TYPE
 			if(tmpl->info->base.type == KS_TYPEDEF_CUSTOM)
 				return NULL; // TODO: support custom type
+#endif
 			return tmpl;
 		}
 		tmpl++;
@@ -507,25 +510,6 @@ static int inp_reader(kgstruct_cbor_t *ks)
 	return 0;
 }
 
-static int handle_copy(kgstruct_cbor_t *ks, uint8_t *dst, uint32_t len, int (*next)(kgstruct_cbor_t*))
-{
-	if(dst)
-	{
-		ks->ptr = dst;
-		ks->byte_cnt = len;
-		ks->skip_cnt = 0;
-	} else
-	{
-		ks->byte_cnt = 0;
-		ks->skip_cnt = len;
-	}
-
-	ks->step = inp_reader;
-	ks->next_func = next;
-
-	return 0;
-}
-
 static void copy_value(uint8_t *dst, uint8_t *src, uint32_t type)
 {
 	switch(type)
@@ -538,16 +522,19 @@ static void copy_value(uint8_t *dst, uint8_t *src, uint32_t type)
 			*dst++ = *src++;
 			*dst++ = *src++;
 			*dst++ = *src++;
+			__attribute__((fallthrough));
 #endif
 		case KS_TYPEDEF_FLAG32:
 		case KS_TYPEDEF_U32:
 		case KS_TYPEDEF_S32:
 			*dst++ = *src++;
 			*dst++ = *src++;
+			__attribute__((fallthrough));
 		case KS_TYPEDEF_FLAG16:
 		case KS_TYPEDEF_U16:
 		case KS_TYPEDEF_S16:
 			*dst++ = *src++;
+			__attribute__((fallthrough));
 		case KS_TYPEDEF_FLAG8:
 		case KS_TYPEDEF_U8:
 		case KS_TYPEDEF_S8:
@@ -796,6 +783,7 @@ static int inp_entry(kgstruct_cbor_t *ks)
 #endif
 						}
 					}
+					__attribute__((fallthrough));
 				case CT_NULL:
 				case CT_UNDEF:
 					ks->step = inp_base;
@@ -944,7 +932,6 @@ static int inp_object(kgstruct_cbor_t *ks)
 
 static int inp_aval(kgstruct_cbor_t *ks)
 {
-	uint8_t in;
 	kgstruct_cbor_recursion_t *r = ks->recursion + ks->depth;
 
 	if(!r->count)

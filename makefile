@@ -5,7 +5,7 @@ LIBS =
 DEFS = -DKGSTRUCT_EXTERNAL_CONFIG=\"ks_config.h\"
 OPT= -O2 -g
 CC = gcc
-CFLAGS = ${OPT} ${DEFS}
+CFLAGS = ${OPT} ${DEFS} -Wextra -Werror
 
 build: ${KSOBJ} ${program}
 
