@@ -14,6 +14,10 @@
 #define CBOR_TYPE_MASK	0b11100000
 #define CBOR_VALUE_MASK	0b00011111
 
+#if defined(KS_CBOR_ENABLE_UINT_KEYS) && KS_CBOR_MAX_KEY_LENGTH < 5
+#error KS_CBOR_MAX_KEY_LENGTH is too small!
+#endif
+
 enum
 {
 	// CBOR types
@@ -303,7 +307,9 @@ static int exp_obj_val(kgstruct_cbor_t *ks)
 			return manage_value(ks, CT_DATA_BINARY, info->base.size, exp_data);
 		break;
 		case KS_TYPEDEF_STRUCT:
+#ifdef KGSTRUCT_ENABLE_FLAGS
 		case KS_TYPEDEF_FLAGS:
+#endif
 			r[1].base = info->object.basetemp;
 			r[1].buff = r[0].buff + tmpl->offset;
 			r[1].count = r[1].base->count;
@@ -367,6 +373,13 @@ static int exp_obj_key(kgstruct_cbor_t *ks)
 
 	r->count--;
 	r->ktpl++;
+
+	if(!r->ktpl->key[0])
+	{
+		kgstruct_uint_t uval = 0;
+		memcpy(&uval, r->ktpl->key + 1, sizeof(uint32_t));
+		return manage_value(ks, CT_INT_POS, uval, exp_obj_val);
+	}
 
 	return manage_value(ks, CT_DATA_STRING, r->ktpl->kln, exp_obj_str);
 }
@@ -524,18 +537,24 @@ static void copy_value(uint8_t *dst, uint8_t *src, uint32_t type)
 			*dst++ = *src++;
 			__attribute__((fallthrough));
 #endif
+#ifdef KGSTRUCT_ENABLE_FLAGS
 		case KS_TYPEDEF_FLAG32:
+#endif
 		case KS_TYPEDEF_U32:
 		case KS_TYPEDEF_S32:
 			*dst++ = *src++;
 			*dst++ = *src++;
 			__attribute__((fallthrough));
+#ifdef KGSTRUCT_ENABLE_FLAGS
 		case KS_TYPEDEF_FLAG16:
+#endif
 		case KS_TYPEDEF_U16:
 		case KS_TYPEDEF_S16:
 			*dst++ = *src++;
 			__attribute__((fallthrough));
+#ifdef KGSTRUCT_ENABLE_FLAGS
 		case KS_TYPEDEF_FLAG8:
+#endif
 		case KS_TYPEDEF_U8:
 		case KS_TYPEDEF_S8:
 			*dst++ = *src++;
@@ -713,8 +732,10 @@ static int inp_entry(kgstruct_cbor_t *ks)
 
 			if(	tmpl &&
 				(
-					tmpl->info->base.type != KS_TYPEDEF_STRUCT &&
-					tmpl->info->base.type != KS_TYPEDEF_FLAGS
+					tmpl->info->base.type != KS_TYPEDEF_STRUCT
+#ifdef KGSTRUCT_ENABLE_FLAGS
+					&& tmpl->info->base.type != KS_TYPEDEF_FLAGS
+#endif
 				)
 			)
 				tmpl = NULL;
@@ -743,6 +764,7 @@ static int inp_entry(kgstruct_cbor_t *ks)
 			{
 				case CT_FALSE:
 				case CT_TRUE:
+#if defined(KGSTRUCT_ENABLE_FLAGS) || defined(KS_CBOR_BOOL_AS_INTEGER)
 					if(tmpl)
 					{
 						uint8_t *p0 = get_pointer(ks, tmpl);
@@ -751,6 +773,7 @@ static int inp_entry(kgstruct_cbor_t *ks)
 
 						switch(type)
 						{
+#ifdef KGSTRUCT_ENABLE_FLAGS
 							case KS_TYPEDEF_FLAG8:
 							case KS_TYPEDEF_FLAG16:
 							case KS_TYPEDEF_FLAG32:
@@ -766,6 +789,7 @@ static int inp_entry(kgstruct_cbor_t *ks)
 
 								copy_value(p0, p1, type);
 							break;
+#endif
 #ifdef KS_CBOR_BOOL_AS_INTEGER
 							case KS_TYPEDEF_S8:
 							case KS_TYPEDEF_U8:
@@ -783,6 +807,7 @@ static int inp_entry(kgstruct_cbor_t *ks)
 #endif
 						}
 					}
+#endif
 					__attribute__((fallthrough));
 				case CT_NULL:
 				case CT_UNDEF:
@@ -845,6 +870,17 @@ static int inp_key_obj(kgstruct_cbor_t *ks)
 	return 0;
 }
 
+#ifdef KS_CBOR_ENABLE_UINT_KEYS
+static int inp_key_int(kgstruct_cbor_t *ks)
+{
+	ks->key[0] = 0;
+	memcpy(ks->key + 1, &ks->value.uval, sizeof(uint32_t));
+	ks->value.u32 = 1 + sizeof(uint32_t);
+	ks->step = inp_val_obj;
+	return 0;
+}
+#endif
+
 static int inp_okey_type(kgstruct_cbor_t *ks)
 {
 	uint8_t in;
@@ -862,6 +898,10 @@ static int inp_okey_type(kgstruct_cbor_t *ks)
 #endif
 			return handle_value(ks, in & CBOR_VALUE_MASK, inp_key_obj);
 		break;
+#ifdef KS_CBOR_ENABLE_UINT_KEYS
+ 		case CT_INT_POS:
+ 			return handle_value(ks, in & CBOR_VALUE_MASK, inp_key_int);
+#endif
 		default:
 #ifdef KS_CBOR_DEBUG
 			printf("bad key type %u\n", in >> 5);

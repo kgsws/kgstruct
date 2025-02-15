@@ -7,6 +7,11 @@
 		"bit5": true,
 		"bit7": true
 	},
+	"ext_read":
+	{
+		"x": 123,
+		"y": 45678
+	},
 	"time_split": "16:20:33",
 	"time_mult": "20:16:44",
 	"pokus": "test",

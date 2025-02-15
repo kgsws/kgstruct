@@ -7,6 +7,7 @@
 #ifdef KGSTRUCT_EXTERNAL_CONFIG
 #include KGSTRUCT_EXTERNAL_CONFIG
 #endif
+#include "ext_type.h"
 #include "kgstruct.h"
 #include "ks_json.h"
 #include "ks_cbor.h"
@@ -49,6 +50,11 @@ static void dump_struct(test_struct_t *in)
 	printf("test_limit1: %u\n", in->test_limit1);
 	printf("test_limit2: %u\n", in->test_limit2);
 	printf("test_limit3: %u\n", in->test_limit3);
+
+	printf("ext_read.x: %u\n", in->ext_read.x);
+	printf("ext_read.y: %u\n", in->ext_read.y);
+
+	printf("cbor_uint: %u\n", in->cbor_uint);
 
 	for(uint32_t i = 0; i < 4; i++)
 		printf("test_u32a[%u]: %u\n", i, in->test_u32a[i]);
@@ -262,10 +268,10 @@ ks_j.readable = 1; // optional
 	else
 		printf("****** MATCH ******\n");
 
-#if 0
+#if 1
 	// TEST SAVE
 	int fd = open("/tmp/test.cbor", O_WRONLY | O_TRUNC | O_CREAT, 0644);
-	write(fd, buffer, ret);
+	write(fd, buffer, idx);
 	close(fd);
 #endif
 	return 0;

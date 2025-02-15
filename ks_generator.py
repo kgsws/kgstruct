@@ -88,7 +88,7 @@ def generate_code(infile, outname):
 		if "include" in config:
 			include_list = config["include"]
 		else:
-			include_list = {}
+			include_list = []
 		structures = data["structures"]
 
 	# parse all structures
@@ -101,13 +101,20 @@ def generate_code(infile, outname):
 			var_info = struct[var_name]
 			var_template = {}
 			var_flags = "0"
+			# external type
+			if "ext" in var_info:
+				var_info["type"] = False
+				var_info["key"] = False
 			# type changes
 			if var_info["type"] == "boolean":
 				# modify the type
 				var_info["type"] = config["boolean"]
 				var_flags += "|" + type_is_bool
 			# get element type
-			if "padding" in var_info:
+			if "ext" in var_info:
+				type_info_def = {}
+				type_info_def["ctype"] = var_info["ext"]
+			elif "padding" in var_info:
 				# special case for padding
 				type_info_def = dict(type_padding)
 				var_template["padding"] = var_info["padding"]
@@ -137,10 +144,13 @@ def generate_code(infile, outname):
 			else:
 				if var_info["type"] in struct_list:
 					# structure-in-structure
+					type_name = var_info["type"]
+					if type_name[0] == "!":
+						type_name = type_name[1:]
 					type_info_def = dict(type_c_struct)
-					type_info_def["ctype"] = var_info["type"] + "_t"
-					type_info_def["size"] = "sizeof(%s_t)" % var_info["type"]
-					type_info_def["struct"] = "ks_template__" + var_info["type"]
+					type_info_def["ctype"] = type_name + "_t"
+					type_info_def["size"] = "sizeof(%s_t)" % type_name
+					type_info_def["struct"] = "ks_template__" + type_name
 				elif var_info["type"] in type_custom_list:
 					# custom type
 					if "flags" in type_custom_list[var_info["type"]]:
@@ -180,7 +190,7 @@ def generate_code(infile, outname):
 				var_template["name"] = var_name
 			# type info
 			var_template["ctype"] = type_info_def["ctype"]
-			if "stype" in type_info_def:
+			if "stype" in type_info_def and type(var_template["name"]) != bool:
 				var_template["type_info_str"] = "ks_info_%u" % add_type(type_info_def)
 				var_template["stype"] = type_info_def["stype"]
 			# add this element
@@ -213,6 +223,8 @@ def generate_code(infile, outname):
 	# export all structures
 	for struct_name in struct_list:
 		struct = struct_list[struct_name]
+		if struct_name[0] == "!":
+			continue
 		# actual structure
 		output.write("typedef struct %s_s\n{\n" % struct_name)
 		# export all variables
@@ -237,6 +249,9 @@ def generate_code(infile, outname):
 		# export all structures
 		for struct_name in struct_list:
 			struct = struct_list[struct_name]
+			# external check
+			if struct_name[0] == "!":
+				struct_name = struct_name[1:]
 			# special structure
 			output.write("typedef struct %s_sf\n{\n" % struct_name)
 			# export all variables
@@ -247,6 +262,8 @@ def generate_code(infile, outname):
 			for var_name in struct:
 				var_info = struct[var_name]
 				if "padding" in var_info:
+					continue
+				if not "stype" in var_info:
 					continue
 				if var_info["stype"] == type_c_struct["stype"]:
 					output.write("\t%sf __%s" % (var_info["ctype"], var_name))
@@ -261,6 +278,8 @@ def generate_code(infile, outname):
 	output.write("\n")
 	# all the templates
 	for struct_name in struct_list:
+		if struct_name[0] == "!":
+			struct_name = struct_name[1:]
 		output.write("extern const struct ks_base_template_s ks_template__%s;\n" % struct_name)
 	# done
 	output.close()
@@ -334,31 +353,46 @@ def generate_code(infile, outname):
 	# generate templates
 	for struct_name in struct_list:
 		struct = struct_list[struct_name]
+		# external check
+		if struct_name[0] == "!":
+			struct_name = struct_name[1:]
 		output.write("const ks_base_template_t ks_template__%s =\n{\n" % struct_name)
 		# optional 'fill info'
 		if enable_fill_info:
 			output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
 			output.write("\t.fill_size = sizeof(%s_tf),\n" % struct_name)
 			output.write("#endif\n")
-		# element count
-		output.write("\t.count = %u,\n" % len(struct))
 		# export all (visible) variables
+		elm_count = 0
 		output.write("\t.tmpl =\n\t{\n")
 		for var_name in struct:
 			var_info = struct[var_name]
 			if "type_info_str" in var_info:
-				output.write("\t\t{\n")
-				output.write("\t\t\t.key = \"%s\",\n" % var_info["name"])
-				output.write("\t\t\t.kln = %u,\n" % len(var_info["name"]))
-				output.write("\t\t\t.info = (const kgstruct_type_t*)&%s,\n" % var_info["type_info_str"])
-				output.write("\t\t\t.offset = offsetof(%s_t,%s),\n" % (struct_name, var_name))
-				if enable_fill_info and var_info["stype"] == type_c_struct["stype"]:
-					output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
-					output.write("\t\t\t.fill_offs = offsetof(%s_tf,__%s),\n" % (struct_name, var_name))
-					output.write("#endif\n")
-				output.write("\t\t},\n")
-		# terminator
-		output.write("\t\t{}\n\t}\n};\n")
+				name = var_info["name"]
+				if type(name) != bool:
+					if type(name) == int:
+						sv = "\\0"
+						sv += "\\x%02X" % (name & 255)
+						sv += "\\x%02X" % ((name >> 8) & 255)
+						sv += "\\x%02X" % ((name >> 16) & 255)
+						sv += "\\x%02X" % ((name >> 24) & 255)
+						name = sv
+						nlen = 5
+					else:
+						nlen = len(name)
+					output.write("\t\t{\n")
+					output.write("\t\t\t.key = \"%s\",\n" % name)
+					output.write("\t\t\t.kln = %u,\n" % nlen)
+					output.write("\t\t\t.info = (const kgstruct_type_t*)&%s,\n" % var_info["type_info_str"])
+					output.write("\t\t\t.offset = offsetof(%s_t,%s),\n" % (struct_name, var_name))
+					if enable_fill_info and var_info["stype"] == type_c_struct["stype"]:
+						output.write("#ifdef KGSTRUCT_FILLINFO_TYPE\n")
+						output.write("\t\t\t.fill_offs = offsetof(%s_tf,__%s),\n" % (struct_name, var_name))
+						output.write("#endif\n")
+					output.write("\t\t},\n")
+					elm_count += 1
+		# terminator and element count
+		output.write("\t\t{}\n\t},\n\t.count = %u\n};\n" % elm_count)
 	# done
 	output.close()
 

@@ -8,6 +8,10 @@
 			"SUB_TEXT_LEN": 28,
 			"META_SUB_SIZE": 2
 		},
+		"include":
+		[
+			"ext_type.h"
+		],
 		"types":
 		{
 			"custom_type":
@@ -35,6 +39,11 @@
 	},
 	"structures":
 	{
+		"!ext_struct":
+		{
+			"x": {"type": "u8"},
+			"y": {"type": "u16"}
+		},
 		"sub_struct":
 		{
 			"test": {"type": "u32"},
@@ -77,7 +86,11 @@
 			"test_limit3": {"type": "u32", "min": 666, "max": 777},
 			"meta_array": {"type": "meta_struct", "array": 4, "empty": true},
 			"custom_test": {"type": "custom_type"},
-			"flag_test": {"type": "custom_flags"}
+			"flag_test": {"type": "custom_flags"},
+			"cbor_uint": {"type": "u32", "key": 666},
+			"hidden": {"type": "u32", "key": false},
+			"ext_def": {"ext": "ext_test_t"},
+			"ext_read": {"type": "!ext_struct"}
 		}
 	}
 }
